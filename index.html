@@ -1153,14 +1153,17 @@ function exportPNG() {
   const svgW = parseFloat(svgEl.getAttribute('width'));
   const svgH = parseFloat(svgEl.getAttribute('height'));
   const scale = 2;
-  // Clone SVG and remove background rect for transparent export
   const svgClone = svgEl.cloneNode(true);
+  // Remove background rect
   const children = svgClone.children;
   for(let i=0;i<children.length;i++){
     if(children[i].tagName==='rect' && !children[i].getAttribute('class')){
       children[i].remove(); break;
     }
   }
+  // Strip background from SVG element's inline style
+  const currentStyle = svgClone.getAttribute('style') || '';
+  svgClone.setAttribute('style', currentStyle.replace(/background\s*:[^;]+;?/g, ''));
   const tmpCanvas = document.createElement('canvas');
   tmpCanvas.width = svgW*scale; tmpCanvas.height = svgH*scale;
   const tmpCtx = tmpCanvas.getContext('2d');
