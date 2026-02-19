@@ -1135,7 +1135,10 @@ window.addEventListener('mouseup', () => {
 //  EXPORT
 // ═══════════════════════════════════════════════════════════════
 function exportSVG() {
-  const s = new XMLSerializer().serializeToString(svgEl);
+  const svgClone = svgEl.cloneNode(true);
+  const bgRect = svgClone.querySelector('rect:first-child');
+  if(bgRect) bgRect.remove();
+  const s = new XMLSerializer().serializeToString(svgClone);
   const blob = new Blob([s], {type:'image/svg+xml'});
   dlBlob(blob,'ascii-art.svg');
 }
