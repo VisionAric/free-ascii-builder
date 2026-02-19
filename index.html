@@ -1,0 +1,1406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>ASCII Builder</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#000000;--s1:#0d0d0d;--s2:#121212;--s3:#1a1a1a;--s4:#222222;
+  --border:rgba(255,255,255,.09);--border2:rgba(255,255,255,.04);
+  --text:#f0f0f0;--muted:#666666;--muted2:#3a3a3a;
+  --accent:#ffffff;--accent2:#aaaaaa;
+  --green:#ffffff;--red:#ffffff;--amber:#aaaaaa;--cyan:#cccccc;
+  --r:10px;--r-sm:7px;
+  --sidebar:300px;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:13px;-webkit-font-smoothing:antialiased;overflow:hidden}
+
+/* ── Layout ─────────────────────────────────────────────────── */
+.app{display:grid;grid-template-rows:52px 1fr;height:100vh}
+.body{display:grid;grid-template-columns:var(--sidebar) 1fr;overflow:hidden}
+
+/* ── Topbar ─────────────────────────────────────────────────── */
+.topbar{
+  background:var(--s1);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 20px;gap:16px;
+}
+.tb-brand{display:flex;align-items:center;gap:10px}
+.tb-logo{
+  width:30px;height:30px;border-radius:8px;
+  background:#ffffff;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:#000;
+}
+.tb-title{font-size:15px;font-weight:800;letter-spacing:-.4px}
+.tb-title span{color:var(--muted)}
+.tb-center{display:flex;align-items:center;gap:8px}
+.tb-right{display:flex;align-items:center;gap:8px}
+
+/* preset buttons */
+.preset-btn{
+  padding:5px 11px;border-radius:6px;font-size:11px;font-weight:600;
+  cursor:pointer;border:1px solid var(--border);background:var(--s3);
+  color:var(--muted);transition:all .15s;font-family:inherit;
+}
+.preset-btn:hover{border-color:var(--accent);color:var(--accent);background:rgba(255,255,255,.06)}
+.preset-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(255,255,255,.08)}
+
+.upload-btn{
+  display:flex;align-items:center;gap:6px;
+  padding:7px 14px;border-radius:8px;
+  background:#ffffff;
+  color:#000;font-size:12px;font-weight:700;cursor:pointer;border:none;
+  font-family:inherit;transition:opacity .15s;white-space:nowrap;
+}
+.upload-btn:hover{opacity:.85}
+
+.export-group{display:flex;gap:4px}
+.exp-btn{
+  padding:6px 12px;border-radius:7px;font-size:11px;font-weight:600;
+  cursor:pointer;border:1px solid var(--border);background:var(--s3);
+  color:var(--muted);transition:all .15s;font-family:inherit;
+}
+.exp-btn:hover{color:var(--text);border-color:rgba(255,255,255,.15)}
+
+.tb-status{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+
+/* ── Sidebar ────────────────────────────────────────────────── */
+.sidebar{
+  background:var(--s1);border-right:1px solid var(--border);
+  overflow-y:auto;display:flex;flex-direction:column;
+}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:var(--s4);border-radius:4px}
+::-webkit-scrollbar-track{background:transparent}
+
+/* Accordion sections */
+.section{border-bottom:1px solid var(--border)}
+.section-hdr{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:11px 14px;cursor:pointer;user-select:none;
+  font-size:11px;font-weight:700;letter-spacing:.8px;
+  text-transform:uppercase;color:var(--muted);
+  transition:color .15s;
+}
+.section-hdr:hover{color:var(--text)}
+.section-hdr.open{color:var(--text)}
+.section-hdr .arrow{font-size:9px;transition:transform .2s}
+.section-hdr.open .arrow{transform:rotate(180deg)}
+.section-body{padding:10px 14px 14px;display:flex;flex-direction:column;gap:10px}
+.section-body.hidden{display:none}
+
+/* Controls */
+.ctrl{display:flex;flex-direction:column;gap:5px}
+.ctrl-row{display:flex;align-items:center;justify-content:space-between}
+.ctrl-label{font-size:11.5px;color:var(--muted);font-weight:500}
+.ctrl-val{
+  font-size:11px;font-family:'JetBrains Mono',monospace;
+  color:var(--text);font-weight:700;min-width:36px;text-align:right;
+}
+input[type=range]{
+  width:100%;height:3px;border-radius:2px;cursor:pointer;
+  background:var(--s4);outline:none;border:none;-webkit-appearance:none;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:13px;height:13px;border-radius:50%;
+  background:var(--accent);border:2px solid var(--s1);cursor:pointer;
+  box-shadow:0 0 4px rgba(255,255,255,.2);
+}
+input[type=range]::-webkit-slider-runnable-track{
+  height:3px;border-radius:2px;
+  background:linear-gradient(to right,var(--accent) var(--pct,50%),var(--s4) var(--pct,50%));
+}
+
+/* Select / Textarea */
+.ctrl select,.ctrl textarea,.ctrl input[type=text]{
+  background:var(--s3);border:1px solid var(--border);border-radius:6px;
+  color:var(--text);font-size:12px;font-family:'JetBrains Mono',monospace;
+  padding:6px 10px;outline:none;width:100%;transition:border-color .15s;
+}
+.ctrl select:focus,.ctrl textarea:focus,.ctrl input[type=text]:focus{border-color:rgba(255,255,255,.3)}
+.ctrl select{cursor:pointer}
+.ctrl textarea{resize:vertical;min-height:52px;font-size:11px;line-height:1.5}
+
+/* Toggle */
+.toggle-row{display:flex;align-items:center;justify-content:space-between}
+.toggle{
+  position:relative;width:36px;height:20px;border-radius:10px;
+  background:var(--s4);cursor:pointer;transition:background .2s;border:1px solid var(--border);flex-shrink:0;
+}
+.toggle.on{background:#ffffff;border-color:#ffffff}
+.toggle::after{
+  content:'';position:absolute;width:14px;height:14px;border-radius:50%;
+  background:#888;top:2px;left:2px;transition:left .2s,background .2s;
+}
+.toggle.on::after{left:18px;background:#000}
+
+/* Char set grid */
+.charset-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.charset-option{
+  padding:5px 4px;border-radius:6px;background:var(--s3);border:1px solid var(--border);
+  font-family:'JetBrains Mono',monospace;font-size:10px;cursor:pointer;
+  text-align:center;color:var(--muted);transition:all .15s;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.charset-option:hover{border-color:rgba(255,255,255,.3);color:var(--text)}
+.charset-option.active{border-color:rgba(255,255,255,.5);color:var(--text);background:rgba(255,255,255,.07)}
+
+/* Color swatch */
+.color-row{display:flex;gap:6px;align-items:center}
+.color-swatch{width:28px;height:28px;border-radius:6px;border:1px solid var(--border);cursor:pointer;overflow:hidden;flex-shrink:0}
+.color-swatch input[type=color]{width:200%;height:200%;margin:-25%;border:none;cursor:pointer;background:none}
+.color-label{font-size:11.5px;color:var(--muted);flex:1}
+
+/* Depth pills */
+.depth-pills{display:flex;gap:4px}
+.depth-pill{
+  flex:1;padding:5px 4px;border-radius:6px;border:1px solid var(--border);
+  background:var(--s3);font-size:10px;cursor:pointer;text-align:center;
+  color:var(--muted);transition:all .15s;font-weight:600;
+}
+.depth-pill.active{border-color:rgba(255,255,255,.5);color:var(--text);background:rgba(255,255,255,.07)}
+
+/* ── Preview area ───────────────────────────────────────────── */
+.preview{
+  background:var(--bg);display:flex;flex-direction:column;
+  overflow:hidden;position:relative;
+}
+
+/* Drop zone */
+.dropzone{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  border:2px dashed rgba(255,255,255,.1);margin:24px;border-radius:var(--r);
+  cursor:pointer;transition:all .2s;gap:14px;
+  background:radial-gradient(ellipse at center,rgba(255,255,255,.02) 0%,transparent 70%);
+}
+.dropzone:hover,.dropzone.drag{border-color:rgba(255,255,255,.3);background:radial-gradient(ellipse at center,rgba(255,255,255,.04) 0%,transparent 70%)}
+.dropzone.hidden{display:none}
+.dz-icon{font-size:42px;opacity:.3}
+.dz-title{font-size:16px;font-weight:700;color:var(--muted)}
+.dz-sub{font-size:12px;color:var(--muted2)}
+.dz-formats{display:flex;gap:6px;margin-top:4px}
+.dz-fmt{padding:3px 8px;border-radius:4px;background:var(--s3);font-size:10px;font-weight:600;color:var(--muted);font-family:'JetBrains Mono',monospace}
+.dz-samples{display:flex;gap:8px;margin-top:8px}
+.sample-btn{
+  padding:6px 12px;border-radius:7px;font-size:11px;font-weight:600;
+  cursor:pointer;border:1px solid var(--border);background:var(--s3);
+  color:var(--muted);transition:all .15s;font-family:inherit;
+}
+.sample-btn:hover{border-color:rgba(255,255,255,.3);color:var(--text)}
+
+/* SVG Output */
+.output-wrap{
+  flex:1;overflow:hidden;display:none;flex-direction:column;
+  position:relative;
+}
+.output-wrap.visible{display:flex}
+.svg-container{
+  flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;
+  padding:20px;position:relative;
+}
+#asciiSvg{display:block;max-width:100%;cursor:crosshair}
+/* Parallax container */
+#svgWrapper{position:relative;display:inline-block}
+
+/* Zoom bar */
+.zoom-bar{
+  position:absolute;bottom:16px;right:16px;
+  display:flex;align-items:center;gap:8px;
+  background:var(--s2);border:1px solid var(--border);border-radius:8px;
+  padding:6px 12px;
+}
+.zoom-btn{width:22px;height:22px;border-radius:5px;background:var(--s3);border:none;cursor:pointer;color:var(--text);font-size:14px;display:flex;align-items:center;justify-content:center;transition:background .15s}
+.zoom-btn:hover{background:var(--s4)}
+.zoom-val{font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text);min-width:36px;text-align:center}
+
+/* Info bar */
+.info-bar{
+  padding:6px 16px;border-top:1px solid var(--border);
+  display:flex;align-items:center;gap:16px;flex-shrink:0;
+  background:var(--s1);
+}
+.info-item{font-size:10.5px;color:var(--muted);font-family:'JetBrains Mono',monospace;display:flex;align-items:center;gap:5px}
+.info-dot{width:6px;height:6px;border-radius:50%}
+
+/* Parallax indicator */
+.parallax-badge{
+  position:absolute;top:14px;left:14px;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);
+  border-radius:20px;padding:4px 10px;font-size:10px;font-weight:700;
+  color:var(--text);display:none;align-items:center;gap:6px;
+}
+.parallax-badge.visible{display:flex}
+.parallax-badge span{width:5px;height:5px;border-radius:50%;background:var(--text);animation:pdot 1.4s ease infinite}
+@keyframes pdot{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* Processing spinner */
+.processing{
+  position:absolute;inset:0;display:none;
+  align-items:center;justify-content:center;
+  background:rgba(10,10,15,.7);backdrop-filter:blur(4px);z-index:10;
+}
+.processing.visible{display:flex}
+.spinner{
+  width:36px;height:36px;border-radius:50%;
+  border:3px solid var(--s4);border-top-color:var(--text);
+  animation:spin .8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Hidden inputs */
+#fileInput{display:none}
+#sampleCanvas{display:none}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ── TOPBAR ────────────────────────────────────────────────── -->
+<header class="topbar">
+  <div class="tb-brand">
+    <div class="tb-logo">▓</div>
+    <div class="tb-title">ASCII<span>.</span>BUILDER</div>
+  </div>
+
+  <div class="tb-center">
+    <span style="font-size:10px;color:var(--muted2);font-weight:600;letter-spacing:.5px">PRESETS</span>
+    <button class="preset-btn active" data-preset="standard">Standard</button>
+    <button class="preset-btn" data-preset="matrix">Matrix</button>
+    <button class="preset-btn" data-preset="blueprint">Blueprint</button>
+    <button class="preset-btn" data-preset="neon">Neon</button>
+    <button class="preset-btn" data-preset="retro">Retro</button>
+  </div>
+
+  <div class="tb-right">
+    <div class="tb-status" id="statusText">No image loaded</div>
+    <div class="export-group">
+      <button class="exp-btn" id="exportSvg">↓ SVG</button>
+      <button class="exp-btn" id="exportPng">↓ PNG</button>
+      <button class="exp-btn" id="exportTxt">↓ TXT</button>
+      <button class="exp-btn" id="copySvg">⧉ Copy</button>
+    </div>
+    <button class="upload-btn" id="uploadBtn">↑ Upload Image</button>
+    <input type="file" id="fileInput" accept="image/*"/>
+  </div>
+</header>
+
+<div class="body">
+
+<!-- ── SIDEBAR ──────────────────────────────────────────────── -->
+<aside class="sidebar">
+
+  <!-- CHARACTER SET -->
+  <div class="section">
+    <div class="section-hdr open" data-section="charset">
+      Characters <span class="arrow">▾</span>
+    </div>
+    <div class="section-body" id="body-charset">
+      <div class="charset-grid" id="charsetGrid">
+        <div class="charset-option active" data-charset="standard" title=" .:-=+*#%@">Dense</div>
+        <div class="charset-option" data-charset="blocks" title=" ░▒▓█">Blocks</div>
+        <div class="charset-option" data-charset="simple" title=" .-=+*#">Simple</div>
+        <div class="charset-option" data-charset="binary" title=" 01">Binary</div>
+        <div class="charset-option" data-charset="hex" title=" 0-F">Hex</div>
+        <div class="charset-option" data-charset="braille" title="⠀⠁⠃⠇">Braille</div>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-label">Custom charset</div>
+        <textarea id="customCharset" placeholder="Type chars lightest→darkest&#10;e.g.:  .:-=+*#%@$" rows="2"> .:-=+*#%@$</textarea>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-row">
+          <div class="ctrl-label">Columns</div>
+          <div class="ctrl-val" id="colsVal">120</div>
+        </div>
+        <input type="range" id="cols" min="20" max="300" value="120"/>
+      </div>
+      <div class="toggle-row">
+        <div class="ctrl-label">Invert characters</div>
+        <button class="toggle" id="invertChars"></button>
+      </div>
+      <div class="toggle-row">
+        <div class="ctrl-label">Edge detection</div>
+        <button class="toggle" id="edgeDetect"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TYPOGRAPHY -->
+  <div class="section">
+    <div class="section-hdr open" data-section="typo">
+      Typography <span class="arrow">▾</span>
+    </div>
+    <div class="section-body" id="body-typo">
+      <div class="ctrl">
+        <div class="ctrl-row">
+          <div class="ctrl-label">Font size</div>
+          <div class="ctrl-val" id="fontSizeVal">10px</div>
+        </div>
+        <input type="range" id="fontSize" min="4" max="24" value="10"/>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-row">
+          <div class="ctrl-label">Line height</div>
+          <div class="ctrl-val" id="lineHeightVal">1.20</div>
+        </div>
+        <input type="range" id="lineHeight" min="80" max="180" value="120"/>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-row">
+          <div class="ctrl-label">Letter spacing</div>
+          <div class="ctrl-val" id="letterSpacingVal">0.0</div>
+        </div>
+        <input type="range" id="letterSpacing" min="-20" max="40" value="0"/>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-label">Font family</div>
+        <select id="fontFamily">
+          <option value="'JetBrains Mono',monospace">JetBrains Mono</option>
+          <option value="'Courier New',monospace">Courier New</option>
+          <option value="monospace">System Mono</option>
+          <option value="'Lucida Console',monospace">Lucida Console</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- COLOR -->
+  <div class="section">
+    <div class="section-hdr open" data-section="color">
+      Color <span class="arrow">▾</span>
+    </div>
+    <div class="section-body" id="body-color">
+      <div class="ctrl">
+        <div class="ctrl-label">Mode</div>
+        <select id="colorMode">
+          <option value="color">Full color</option>
+          <option value="mono">Monochrome</option>
+          <option value="invert">Invert color</option>
+          <option value="grayscale">Grayscale</option>
+          <option value="sepia">Sepia</option>
+          <option value="hue">Hue shift</option>
+        </select>
+      </div>
+      <div class="color-row">
+        <div class="color-swatch"><input type="color" id="bgColor" value="#000000"/></div>
+        <div class="color-label">Background</div>
+      </div>
+      <div class="color-row" id="fgColorRow">
+        <div class="color-swatch"><input type="color" id="fgColor" value="#00ff41"/></div>
+        <div class="color-label">Foreground (mono)</div>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-row">
+          <div class="ctrl-label">Brightness</div>
+          <div class="ctrl-val" id="brightnessVal">0</div>
+        </div>
+        <input type="range" id="brightness" min="-100" max="100" value="0"/>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-row">
+          <div class="ctrl-label">Contrast</div>
+          <div class="ctrl-val" id="contrastVal">0</div>
+        </div>
+        <input type="range" id="contrast" min="-100" max="100" value="0"/>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-row">
+          <div class="ctrl-label">Saturation</div>
+          <div class="ctrl-val" id="saturationVal">100%</div>
+        </div>
+        <input type="range" id="saturation" min="0" max="200" value="100"/>
+      </div>
+      <div class="ctrl" id="hueRow" style="display:none">
+        <div class="ctrl-row">
+          <div class="ctrl-label">Hue shift</div>
+          <div class="ctrl-val" id="hueVal">0°</div>
+        </div>
+        <input type="range" id="hue" min="0" max="360" value="0"/>
+      </div>
+    </div>
+  </div>
+
+  <!-- IMAGE PROCESSING -->
+  <div class="section">
+    <div class="section-hdr" data-section="img">
+      Image Processing <span class="arrow">▾</span>
+    </div>
+    <div class="section-body hidden" id="body-img">
+      <div class="ctrl">
+        <div class="ctrl-row">
+          <div class="ctrl-label">Pre-blur</div>
+          <div class="ctrl-val" id="blurVal">0</div>
+        </div>
+        <input type="range" id="blur" min="0" max="10" value="0" step="0.5"/>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-row">
+          <div class="ctrl-label">Posterize</div>
+          <div class="ctrl-val" id="posterizeVal">Off</div>
+        </div>
+        <input type="range" id="posterize" min="0" max="8" value="0" step="1"/>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-row">
+          <div class="ctrl-label">Threshold</div>
+          <div class="ctrl-val" id="thresholdVal">Off</div>
+        </div>
+        <input type="range" id="threshold" min="0" max="255" value="0"/>
+      </div>
+      <div class="toggle-row">
+        <div class="ctrl-label">Dithering (Floyd-Steinberg)</div>
+        <button class="toggle" id="dithering"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PARALLAX -->
+  <div class="section">
+    <div class="section-hdr" data-section="parallax">
+      Parallax Effect <span class="arrow">▾</span>
+    </div>
+    <div class="section-body hidden" id="body-parallax">
+      <div class="toggle-row">
+        <div class="ctrl-label" style="font-weight:700">Enable parallax</div>
+        <button class="toggle" id="parallaxToggle"></button>
+      </div>
+      <div id="parallaxControls" style="display:flex;flex-direction:column;gap:10px;opacity:.4;pointer-events:none">
+        <div class="ctrl">
+          <div class="ctrl-label">Depth layers</div>
+          <div class="depth-pills">
+            <div class="depth-pill active" data-layers="3">3</div>
+            <div class="depth-pill" data-layers="5">5</div>
+            <div class="depth-pill" data-layers="7">7</div>
+          </div>
+        </div>
+        <div class="ctrl">
+          <div class="ctrl-row">
+            <div class="ctrl-label">Intensity</div>
+            <div class="ctrl-val" id="parallaxIntVal">20px</div>
+          </div>
+          <input type="range" id="parallaxInt" min="5" max="80" value="20"/>
+        </div>
+        <div class="ctrl">
+          <div class="ctrl-label">Mode</div>
+          <select id="parallaxMode">
+            <option value="mouse">Mouse tracking</option>
+            <option value="scroll">Scroll parallax</option>
+            <option value="auto">Auto animate</option>
+            <option value="tilt">Device tilt</option>
+          </select>
+        </div>
+        <div class="ctrl">
+          <div class="ctrl-row">
+            <div class="ctrl-label">Smoothing</div>
+            <div class="ctrl-val" id="parallaxSmoothVal">0.08</div>
+          </div>
+          <input type="range" id="parallaxSmooth" min="1" max="20" value="8"/>
+        </div>
+        <div class="toggle-row">
+          <div class="ctrl-label">Depth fog</div>
+          <button class="toggle on" id="depthFog"></button>
+        </div>
+        <div class="toggle-row">
+          <div class="ctrl-label">3D perspective</div>
+          <button class="toggle on" id="perspective3d"></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</aside>
+
+<!-- ── PREVIEW ───────────────────────────────────────────────── -->
+<main class="preview">
+  <div class="processing" id="processing"><div class="spinner"></div></div>
+
+  <!-- Drop zone -->
+  <div class="dropzone" id="dropzone">
+    <div class="dz-icon">▓░▒</div>
+    <div class="dz-title">Drop image here or click to upload</div>
+    <div class="dz-sub">Converts any photo to editable vector ASCII art</div>
+    <div class="dz-formats">
+      <div class="dz-fmt">PNG</div><div class="dz-fmt">JPG</div>
+      <div class="dz-fmt">WEBP</div><div class="dz-fmt">GIF</div>
+    </div>
+    <div class="dz-samples">
+      <button class="sample-btn" data-sample="gradient">Try gradient</button>
+      <button class="sample-btn" data-sample="portrait">Try portrait</button>
+      <button class="sample-btn" data-sample="landscape">Try landscape</button>
+    </div>
+  </div>
+
+  <!-- Output -->
+  <div class="output-wrap" id="outputWrap">
+    <div class="parallax-badge" id="parallaxBadge"><span></span>PARALLAX ACTIVE</div>
+    <div class="svg-container" id="svgContainer">
+      <div id="svgWrapper">
+        <svg id="asciiSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+    </div>
+    <div class="zoom-bar">
+      <button class="zoom-btn" id="zoomOut">−</button>
+      <div class="zoom-val" id="zoomVal">100%</div>
+      <button class="zoom-btn" id="zoomIn">+</button>
+      <button class="zoom-btn" id="zoomFit" title="Fit to screen" style="font-size:11px">⊞</button>
+    </div>
+  </div>
+
+  <!-- Info bar -->
+  <div class="info-bar">
+    <div class="info-item"><div class="info-dot" style="background:var(--accent)"></div><span id="infoSize">—</span></div>
+    <div class="info-item"><div class="info-dot" style="background:var(--green)"></div><span id="infoChars">—</span></div>
+    <div class="info-item"><div class="info-dot" style="background:var(--cyan)"></div><span id="infoMode">color</span></div>
+    <div class="info-item"><div class="info-dot" style="background:var(--amber)"></div><span id="infoFile">no file</span></div>
+  </div>
+</main>
+
+</div>
+</div>
+
+<!-- Hidden canvas for image processing -->
+<canvas id="processingCanvas" style="display:none"></canvas>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  CHARACTER SETS
+// ═══════════════════════════════════════════════════════════════
+const CHARSETS = {
+  standard: ` .'"\`^",:;Il!i><~+_-?][}{1)(|/\\tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$`,
+  blocks:   ` ░▒▓█`,
+  simple:   ` .-=+*#%@`,
+  binary:   ` 01`,
+  hex:      ` 0123456789ABCDEF`,
+  braille:  ` ⠁⠃⠇⠏⠟⠿⣿`,
+};
+
+const PRESETS = {
+  standard: { colorMode:'color',   bgColor:'#000000', fgColor:'#ffffff', fontSize:10, cols:120, lineHeight:120, invertChars:false, charset:'standard' },
+  matrix:   { colorMode:'mono',    bgColor:'#000000', fgColor:'#00ff41', fontSize:10, cols:100, lineHeight:120, invertChars:false, charset:'simple'   },
+  blueprint:{ colorMode:'mono',    bgColor:'#0a1628', fgColor:'#4f8ef7', fontSize:9,  cols:130, lineHeight:115, invertChars:false, charset:'standard'  },
+  neon:     { colorMode:'hue',     bgColor:'#080010', fgColor:'#ff00ff', fontSize:11, cols:90,  lineHeight:125, invertChars:false, charset:'blocks'    },
+  retro:    { colorMode:'sepia',   bgColor:'#1a0e00', fgColor:'#d4a850', fontSize:10, cols:100, lineHeight:118, invertChars:false, charset:'standard'  },
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════════
+let state = {
+  // image
+  imageLoaded: false,
+  imageEl: null,
+  imgW: 0, imgH: 0,
+  // char
+  charset: 'standard',
+  customChars: ` .:-=+*#%@$`,
+  cols: 120,
+  invertChars: false,
+  edgeDetect: false,
+  dithering: false,
+  // typo
+  fontSize: 10,
+  lineHeight: 1.20,
+  letterSpacing: 0,
+  fontFamily: `'JetBrains Mono',monospace`,
+  // color
+  colorMode: 'color',
+  bgColor: '#000000',
+  fgColor: '#00ff41',
+  brightness: 0,
+  contrast: 0,
+  saturation: 100,
+  hue: 0,
+  // image proc
+  blur: 0,
+  posterize: 0,
+  threshold: 0,
+  // parallax
+  parallaxEnabled: false,
+  parallaxLayers: 3,
+  parallaxInt: 20,
+  parallaxMode: 'mouse',
+  parallaxSmooth: 0.08,
+  depthFog: true,
+  perspective3d: true,
+  // ui
+  zoom: 1,
+};
+
+let asciiGrid = [];         // {char, r,g,b, brightness}[][]
+let parallaxX = 0, parallaxY = 0;
+let targetX = 0, targetY = 0;
+let rafId = null;
+let autoAngleT = 0;
+let renderDebounce = null;
+
+// ═══════════════════════════════════════════════════════════════
+//  DOM REFS
+// ═══════════════════════════════════════════════════════════════
+const dropzone    = document.getElementById('dropzone');
+const outputWrap  = document.getElementById('outputWrap');
+const svgEl       = document.getElementById('asciiSvg');
+const svgWrapper  = document.getElementById('svgWrapper');
+const svgContainer= document.getElementById('svgContainer');
+const fileInput   = document.getElementById('fileInput');
+const canvas      = document.getElementById('processingCanvas');
+const ctx         = canvas.getContext('2d', {willReadFrequently:true});
+const processing  = document.getElementById('processing');
+const parallaxBadge = document.getElementById('parallaxBadge');
+
+// ═══════════════════════════════════════════════════════════════
+//  IMAGE LOADING
+// ═══════════════════════════════════════════════════════════════
+function loadImageFile(file) {
+  const url = URL.createObjectURL(file);
+  loadImageUrl(url, file.name);
+}
+
+function loadImageUrl(url, name='image') {
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    state.imageEl = img;
+    state.imgW = img.naturalWidth;
+    state.imgH = img.naturalHeight;
+    state.imageLoaded = true;
+    document.getElementById('infoFile').textContent = name;
+    showOutput();
+    scheduleRender();
+    URL.revokeObjectURL(url);
+  };
+  img.src = url;
+}
+
+function generateSampleImage(type) {
+  const w = 600, h = 400;
+  canvas.width = w; canvas.height = h;
+
+  if(type === 'gradient') {
+    const g = ctx.createRadialGradient(w/2,h/2,0,w/2,h/2,w/1.5);
+    g.addColorStop(0,'#ffffff'); g.addColorStop(.3,'#cc88ff');
+    g.addColorStop(.6,'#4466ff'); g.addColorStop(1,'#000000');
+    ctx.fillStyle = g; ctx.fillRect(0,0,w,h);
+    // add some circles
+    for(let i=0;i<8;i++){
+      const r=20+Math.random()*80, cx=Math.random()*w, cy=Math.random()*h;
+      const g2=ctx.createRadialGradient(cx,cy,0,cx,cy,r);
+      g2.addColorStop(0,'rgba(255,255,255,.8)'); g2.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=g2; ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill();
+    }
+  } else if(type === 'portrait') {
+    // Face-like shape
+    ctx.fillStyle='#1a1a2e'; ctx.fillRect(0,0,w,h);
+    // Head
+    const face=ctx.createRadialGradient(w/2,h/2-20,10,w/2,h/2-20,160);
+    face.addColorStop(0,'#f0d0a0'); face.addColorStop(.7,'#d4a060'); face.addColorStop(1,'#1a1a2e');
+    ctx.fillStyle=face; ctx.beginPath(); ctx.ellipse(w/2,h/2-20,150,170,0,0,Math.PI*2); ctx.fill();
+    // Eyes
+    ctx.fillStyle='rgba(0,0,0,.8)';
+    ctx.beginPath(); ctx.ellipse(w/2-50,h/2-50,18,12,0,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(w/2+50,h/2-50,18,12,0,0,Math.PI*2); ctx.fill();
+    // Eye highlights
+    ctx.fillStyle='rgba(255,255,255,.8)';
+    ctx.beginPath(); ctx.ellipse(w/2-43,h/2-55,5,4,0,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(w/2+57,h/2-55,5,4,0,0,Math.PI*2); ctx.fill();
+    // Nose
+    ctx.strokeStyle='rgba(0,0,0,.3)'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(w/2,h/2-30); ctx.lineTo(w/2-20,h/2+20); ctx.lineTo(w/2+20,h/2+20); ctx.stroke();
+    // Mouth
+    ctx.strokeStyle='rgba(180,80,80,.7)'; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.arc(w/2,h/2+50,40,0.1,Math.PI-0.1); ctx.stroke();
+    // Hair
+    const hair=ctx.createLinearGradient(w/2-150,0,w/2+150,100);
+    hair.addColorStop(0,'#1a0a00'); hair.addColorStop(1,'#4a2000');
+    ctx.fillStyle=hair;
+    ctx.beginPath(); ctx.ellipse(w/2,h/2-120,155,80,0,Math.PI,Math.PI*2); ctx.fill();
+  } else { // landscape
+    // Sky
+    const sky=ctx.createLinearGradient(0,0,0,h*0.6);
+    sky.addColorStop(0,'#0a0a30'); sky.addColorStop(.5,'#1a3a6a'); sky.addColorStop(1,'#2a6aa0');
+    ctx.fillStyle=sky; ctx.fillRect(0,0,w,h*0.6);
+    // Stars
+    for(let i=0;i<80;i++){
+      const x=Math.random()*w, y=Math.random()*h*0.5, r=Math.random()*1.5;
+      ctx.fillStyle=`rgba(255,255,255,${0.3+Math.random()*.7})`;
+      ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+    }
+    // Moon
+    const moon=ctx.createRadialGradient(w*0.8,h*0.1,0,w*0.8,h*0.1,50);
+    moon.addColorStop(0,'#ffffee'); moon.addColorStop(.8,'#ddddbb'); moon.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=moon; ctx.beginPath(); ctx.arc(w*0.8,h*0.1,50,0,Math.PI*2); ctx.fill();
+    // Mountains
+    ctx.fillStyle='#0d1f0d';
+    ctx.beginPath(); ctx.moveTo(0,h*0.6);
+    for(let x=0;x<=w;x+=30){
+      const y=h*0.6-Math.sin(x/w*Math.PI*2)*h*0.25-Math.sin(x/w*Math.PI*5)*h*0.1;
+      ctx.lineTo(x,y);
+    }
+    ctx.lineTo(w,h); ctx.lineTo(0,h); ctx.fill();
+    // Water reflection
+    const water=ctx.createLinearGradient(0,h*0.65,0,h);
+    water.addColorStop(0,'#0a2030'); water.addColorStop(1,'#050f18');
+    ctx.fillStyle=water; ctx.fillRect(0,h*0.65,w,h*0.35);
+    // Reflection shimmer
+    for(let i=0;i<20;i++){
+      const rx=Math.random()*w, ry=h*0.7+Math.random()*h*0.25;
+      ctx.fillStyle=`rgba(100,150,200,${0.05+Math.random()*.15})`;
+      ctx.fillRect(rx,ry,2+Math.random()*60,1);
+    }
+  }
+
+  const dataUrl = canvas.toDataURL();
+  const img = new Image();
+  img.onload = () => {
+    state.imageEl = img; state.imgW = w; state.imgH = h;
+    state.imageLoaded = true;
+    document.getElementById('infoFile').textContent = `sample-${type}`;
+    showOutput(); scheduleRender();
+  };
+  img.src = dataUrl;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  IMAGE PROCESSING
+// ═══════════════════════════════════════════════════════════════
+function getPixelData() {
+  const cols = state.cols;
+  const aspectCorrection = 0.45; // monospace chars are ~2:1 h:w
+  const rows = Math.round(cols * (state.imgH / state.imgW) * aspectCorrection);
+
+  canvas.width = cols; canvas.height = rows;
+  ctx.clearRect(0,0,cols,rows);
+
+  // Apply blur via CSS filter on offscreen
+  ctx.filter = state.blur > 0 ? `blur(${state.blur}px)` : 'none';
+  ctx.drawImage(state.imageEl, 0,0, cols, rows);
+  ctx.filter = 'none';
+
+  let data = ctx.getImageData(0,0,cols,rows);
+  applyColorAdjust(data);
+  if(state.posterize > 0) applyPosterize(data);
+  if(state.threshold > 0) applyThreshold(data);
+  if(state.edgeDetect) data = applySobel(data, cols, rows);
+  if(state.dithering) applyDither(data, cols, rows);
+  return {data, cols, rows};
+}
+
+function applyColorAdjust(imageData) {
+  const d = imageData.data;
+  const b = state.brightness / 100;
+  const c = (state.contrast / 100);
+  const cFactor = (259*(c*255+255)) / (255*(259-c*255));
+  const sat = state.saturation / 100;
+  const hDeg = state.hue;
+
+  for(let i=0;i<d.length;i+=4) {
+    let r=d[i]/255, g=d[i+1]/255, bl=d[i+2]/255;
+    // brightness
+    r+=b; g+=b; bl+=b;
+    // contrast
+    r=cFactor*(r-.5)+.5; g=cFactor*(g-.5)+.5; bl=cFactor*(bl-.5)+.5;
+    // saturation
+    const lum = 0.299*r+0.587*g+0.114*bl;
+    r=lum+(r-lum)*sat; g=lum+(g-lum)*sat; bl=lum+(bl-lum)*sat;
+    // hue shift
+    if(hDeg!==0) { const [hh,ss,vv]=rgbToHsv(r,g,bl); [r,g,bl]=hsvToRgb((hh+hDeg/360)%1,ss,vv); }
+    // clamp
+    d[i]  =Math.max(0,Math.min(255,r*255));
+    d[i+1]=Math.max(0,Math.min(255,g*255));
+    d[i+2]=Math.max(0,Math.min(255,bl*255));
+  }
+  ctx.putImageData(imageData,0,0);
+}
+
+function applyPosterize(imageData) {
+  const d=imageData.data; const levels=state.posterize;
+  for(let i=0;i<d.length;i+=4){
+    d[i]  =Math.round(d[i]  /255*levels)/levels*255;
+    d[i+1]=Math.round(d[i+1]/255*levels)/levels*255;
+    d[i+2]=Math.round(d[i+2]/255*levels)/levels*255;
+  }
+  ctx.putImageData(imageData,0,0);
+}
+
+function applyThreshold(imageData) {
+  const d=imageData.data; const t=state.threshold;
+  for(let i=0;i<d.length;i+=4){
+    const lum=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
+    const v=lum>t?255:0;
+    d[i]=d[i+1]=d[i+2]=v;
+  }
+  ctx.putImageData(imageData,0,0);
+}
+
+function applySobel(imageData, w, h) {
+  const src=imageData.data; const out=ctx.createImageData(w,h); const od=out.data;
+  const kx=[[-1,0,1],[-2,0,2],[-1,0,1]];
+  const ky=[[-1,-2,-1],[0,0,0],[1,2,1]];
+  for(let y=1;y<h-1;y++){for(let x=1;x<w-1;x++){
+    let gx=0,gy=0;
+    for(let ky2=0;ky2<3;ky2++){for(let kx2=0;kx2<3;kx2++){
+      const px=((y+ky2-1)*w+(x+kx2-1))*4;
+      const lum=0.299*src[px]+0.587*src[px+1]+0.114*src[px+2];
+      gx+=lum*kx[ky2][kx2]; gy+=lum*ky[ky2][kx2];
+    }}
+    const mag=Math.min(255,Math.sqrt(gx*gx+gy*gy));
+    const i=(y*w+x)*4;
+    od[i]=od[i+1]=od[i+2]=mag; od[i+3]=255;
+  }}
+  ctx.putImageData(out,0,0); return out;
+}
+
+function applyDither(imageData, w, h) {
+  const d=imageData.data;
+  for(let y=0;y<h;y++){for(let x=0;x<w;x++){
+    const i=(y*w+x)*4;
+    const old=[d[i],d[i+1],d[i+2]];
+    const nw=old.map(v=>v>127?255:0);
+    [d[i],d[i+1],d[i+2]]=[nw[0],nw[1],nw[2]];
+    const err=old.map((v,k)=>v-nw[k]);
+    const spread=[[1,0,7/16],[- 1,1,3/16],[0,1,5/16],[1,1,1/16]];
+    spread.forEach(([dx,dy,f])=>{
+      const nx=x+dx,ny=y+dy;
+      if(nx>=0&&nx<w&&ny>=0&&ny<h){
+        const ni=(ny*w+nx)*4;
+        for(let c=0;c<3;c++) d[ni+c]=Math.max(0,Math.min(255,d[ni+c]+err[c]*f));
+      }
+    });
+  }}
+  ctx.putImageData(imageData,0,0);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ASCII CONVERSION
+// ═══════════════════════════════════════════════════════════════
+function convertToAscii() {
+  const {data,cols,rows} = getPixelData();
+  const d = data.data;
+  const chars = state.charset==='custom'
+    ? state.customChars
+    : CHARSETS[state.charset] || CHARSETS.standard;
+
+  const grid = [];
+  for(let r=0;r<rows;r++){
+    const row=[];
+    for(let c=0;c<cols;c++){
+      const i=(r*cols+c)*4;
+      const rv=d[i], gv=d[i+1], bv=d[i+2];
+      let lum=0.299*rv+0.587*gv+0.114*bv;
+
+      // Apply color mode transformations for char lookup
+      let charLum=lum/255;
+      if(state.invertChars) charLum=1-charLum;
+
+      const charIdx = Math.max(0,Math.min(chars.length-1,
+        Math.floor(charLum*(chars.length-1))));
+      const ch = chars[charIdx];
+
+      // Color output
+      let fr=rv, fg=gv, fb=bv;
+      if(state.colorMode==='mono'){ const [fr2,fg2,fb2]=hexToRgb(state.fgColor); fr=fr2;fg=fg2;fb=fb2; }
+      else if(state.colorMode==='grayscale'){ fr=fg=fb=lum; }
+      else if(state.colorMode==='invert'){ fr=255-rv;fg=255-gv;fb=255-bv; }
+      else if(state.colorMode==='sepia'){ fr=rv*.393+gv*.769+bv*.189; fg=rv*.349+gv*.686+bv*.168; fb=rv*.272+gv*.534+bv*.131; }
+
+      // Depth layer for parallax (0 = dark background, N = bright foreground)
+      const depthLayer = Math.floor(charLum * (state.parallaxLayers - 1));
+
+      row.push({ ch, r:fr, g:fg, b:fb, lum:charLum, depth:depthLayer });
+    }
+    grid.push(row);
+  }
+  return {grid, cols, rows};
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SVG RENDERING
+// ═══════════════════════════════════════════════════════════════
+function renderSVG({grid, cols, rows}) {
+  const fs = state.fontSize;
+  const lh = state.lineHeight;
+  const ls = state.letterSpacing / 10; // convert from slider (tenths em)
+  const fw = fs * 0.6 + ls; // approx char width
+  const fh = fs * lh;
+  const svgW = cols * fw;
+  const svgH = rows * fh;
+  const bg = state.bgColor;
+  const ff = state.fontFamily;
+
+  // Build layers
+  const numLayers = state.parallaxEnabled ? state.parallaxLayers : 1;
+  const layerBuffers = Array.from({length:numLayers}, ()=>[]);
+
+  grid.forEach((row, ri) => {
+    const y = ri * fh + fs; // baseline
+    row.forEach((cell, ci) => {
+      if(cell.ch===' ') return; // skip spaces
+      const x = ci * fw;
+      const color = `rgb(${Math.round(cell.r)},${Math.round(cell.g)},${Math.round(cell.b)})`;
+      const layer = state.parallaxEnabled ? cell.depth : 0;
+
+      // Depth fog: deeper layers more transparent
+      let opacity = 1;
+      if(state.parallaxEnabled && state.depthFog) {
+        opacity = 0.3 + (cell.depth / (numLayers-1)) * 0.7;
+      }
+
+      const opacityAttr = opacity < 0.99 ? ` opacity="${opacity.toFixed(2)}"` : '';
+      layerBuffers[layer].push(
+        `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" fill="${color}"${opacityAttr}>${cell.ch==='&'?'&amp;':cell.ch==='<'?'&lt;':cell.ch}</text>`
+      );
+    });
+  });
+
+  // Build SVG
+  let svgContent = `<rect width="${svgW}" height="${svgH}" fill="${bg}"/>`;
+
+  if(state.parallaxEnabled) {
+    layerBuffers.forEach((buf,i) => {
+      const depthName = `layer-${i}`;
+      svgContent += `<g class="plx-layer" data-layer="${i}" id="${depthName}" style="will-change:transform">${buf.join('')}</g>`;
+    });
+  } else {
+    svgContent += `<g>${layerBuffers[0].join('')}</g>`;
+  }
+
+  const lsAttr = ls !== 0 ? ` letter-spacing="${ls.toFixed(2)}em"` : '';
+  svgEl.setAttribute('viewBox',`0 0 ${svgW} ${svgH}`);
+  svgEl.setAttribute('width', svgW);
+  svgEl.setAttribute('height', svgH);
+  svgEl.setAttribute('style',`font-family:${ff};font-size:${fs}px;background:${bg}`);
+  svgEl.innerHTML = `<style>text{${lsAttr?`letter-spacing:${ls.toFixed(2)}em;`:''}dominant-baseline:auto}</style>${svgContent}`;
+
+  // Update info
+  const totalChars = grid.reduce((s,r)=>s+r.filter(c=>c.ch!==' ').length,0);
+  document.getElementById('infoSize').textContent = `${cols}×${rows}`;
+  document.getElementById('infoChars').textContent = `${totalChars.toLocaleString()} chars`;
+  document.getElementById('infoMode').textContent = state.colorMode;
+  document.getElementById('statusText').textContent = `${cols}c × ${rows}r · ${totalChars.toLocaleString()} chars`;
+
+  // Apply zoom
+  applyZoom();
+  asciiGrid = grid;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  PARALLAX ENGINE
+// ═══════════════════════════════════════════════════════════════
+function startParallax() {
+  if(rafId) cancelAnimationFrame(rafId);
+  parallaxX=0; parallaxY=0; targetX=0; targetY=0;
+  parallaxBadge.classList.add('visible');
+
+  const mode = state.parallaxMode;
+
+  if(mode==='mouse') {
+    svgContainer.addEventListener('mousemove', onMouseMove);
+    svgContainer.addEventListener('mouseleave', onMouseLeave);
+  } else if(mode==='scroll') {
+    svgContainer.addEventListener('wheel', onWheel, {passive:true});
+  } else if(mode==='tilt' && window.DeviceOrientationEvent) {
+    window.addEventListener('deviceorientation', onTilt);
+  }
+
+  animateParallax();
+}
+
+function stopParallax() {
+  if(rafId) cancelAnimationFrame(rafId); rafId=null;
+  svgContainer.removeEventListener('mousemove', onMouseMove);
+  svgContainer.removeEventListener('mouseleave', onMouseLeave);
+  svgContainer.removeEventListener('wheel', onWheel);
+  window.removeEventListener('deviceorientation', onTilt);
+  parallaxBadge.classList.remove('visible');
+  // Reset transforms
+  document.querySelectorAll('.plx-layer').forEach(l=>{ l.style.transform=''; });
+  if(state.perspective3d) svgWrapper.style.transform='';
+}
+
+function onMouseMove(e) {
+  const rect = svgContainer.getBoundingClientRect();
+  targetX = ((e.clientX - rect.left) / rect.width  - 0.5) * 2;
+  targetY = ((e.clientY - rect.top)  / rect.height - 0.5) * 2;
+}
+function onMouseLeave() { targetX=0; targetY=0; }
+function onWheel(e) { targetY = Math.max(-1,Math.min(1, targetY + e.deltaY*0.002)); }
+function onTilt(e) {
+  targetX = (e.gamma||0)/45;
+  targetY = ((e.beta||0)-45)/45;
+}
+
+function animateParallax() {
+  const smooth = state.parallaxSmooth;
+  parallaxX += (targetX - parallaxX) * smooth;
+  parallaxY += (targetY - parallaxY) * smooth;
+
+  if(state.parallaxMode==='auto') {
+    autoAngleT += 0.008;
+    parallaxX = Math.sin(autoAngleT)*0.6;
+    parallaxY = Math.cos(autoAngleT*0.7)*0.4;
+  }
+
+  const layers = document.querySelectorAll('.plx-layer');
+  const n = layers.length;
+  const intensity = state.parallaxInt;
+
+  layers.forEach((layer,i) => {
+    // i=0 is darkest (background), i=n-1 is brightest (foreground)
+    const t = n>1 ? (i/(n-1)) : 0;
+    const depthFactor = (t - 0.5) * 2; // -1 to +1
+    const dx = parallaxX * depthFactor * intensity;
+    const dy = parallaxY * depthFactor * intensity;
+    layer.style.transform = `translate(${dx.toFixed(2)}px,${dy.toFixed(2)}px)`;
+  });
+
+  if(state.perspective3d && n>0) {
+    const rotX = parallaxY * -8;
+    const rotY = parallaxX * 8;
+    svgWrapper.style.transform = `perspective(800px) rotateX(${rotX.toFixed(2)}deg) rotateY(${rotY.toFixed(2)}deg)`;
+    svgWrapper.style.transformStyle = 'preserve-3d';
+  }
+
+  rafId = requestAnimationFrame(animateParallax);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  RENDER PIPELINE
+// ═══════════════════════════════════════════════════════════════
+function scheduleRender() {
+  clearTimeout(renderDebounce);
+  processing.classList.add('visible');
+  renderDebounce = setTimeout(doRender, 80);
+}
+
+function doRender() {
+  if(!state.imageLoaded) { processing.classList.remove('visible'); return; }
+  try {
+    const result = convertToAscii();
+    renderSVG(result);
+    if(state.parallaxEnabled) startParallax(); else stopParallax();
+  } catch(e) { console.error(e); }
+  processing.classList.remove('visible');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ZOOM
+// ═══════════════════════════════════════════════════════════════
+function applyZoom() {
+  svgEl.style.transform = `scale(${state.zoom})`;
+  svgEl.style.transformOrigin = 'top left';
+  document.getElementById('zoomVal').textContent = Math.round(state.zoom*100)+'%';
+}
+function fitZoom() {
+  const w = svgContainer.clientWidth - 40;
+  const h = svgContainer.clientHeight - 40;
+  const svgW = parseFloat(svgEl.getAttribute('width')||500);
+  const svgH = parseFloat(svgEl.getAttribute('height')||400);
+  state.zoom = Math.min(w/svgW, h/svgH, 1);
+  applyZoom();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  EXPORT
+// ═══════════════════════════════════════════════════════════════
+function exportSVG() {
+  const s = new XMLSerializer().serializeToString(svgEl);
+  const blob = new Blob([s], {type:'image/svg+xml'});
+  dlBlob(blob,'ascii-art.svg');
+}
+
+function exportPNG() {
+  const svgW = parseFloat(svgEl.getAttribute('width'));
+  const svgH = parseFloat(svgEl.getAttribute('height'));
+  const scale = 2;
+  const tmpCanvas = document.createElement('canvas');
+  tmpCanvas.width = svgW*scale; tmpCanvas.height = svgH*scale;
+  const tmpCtx = tmpCanvas.getContext('2d');
+  const s = new XMLSerializer().serializeToString(svgEl);
+  const blob = new Blob([s],{type:'image/svg+xml'});
+  const url = URL.createObjectURL(blob);
+  const img2 = new Image();
+  img2.onload = () => {
+    tmpCtx.drawImage(img2,0,0,svgW*scale,svgH*scale);
+    tmpCanvas.toBlob(b=>{ dlBlob(b,'ascii-art.png'); URL.revokeObjectURL(url); });
+  };
+  img2.src = url;
+}
+
+function exportTXT() {
+  const txt = asciiGrid.map(r=>r.map(c=>c.ch).join('')).join('\n');
+  dlBlob(new Blob([txt],{type:'text/plain'}),'ascii-art.txt');
+}
+
+function copySVG() {
+  const s = new XMLSerializer().serializeToString(svgEl);
+  navigator.clipboard.writeText(s).then(()=>{
+    const btn = document.getElementById('copySvg');
+    btn.textContent='✓ Copied'; setTimeout(()=>btn.textContent='⧉ Copy',1500);
+  });
+}
+
+function dlBlob(blob, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  PRESETS
+// ═══════════════════════════════════════════════════════════════
+function applyPreset(name) {
+  const p = PRESETS[name]; if(!p) return;
+  Object.assign(state, {
+    colorMode: p.colorMode,
+    bgColor: p.bgColor,
+    fgColor: p.fgColor,
+    fontSize: p.fontSize,
+    cols: p.cols,
+    lineHeight: p.lineHeight / 100,
+    invertChars: p.invertChars,
+    charset: p.charset,
+  });
+  syncUI(); scheduleRender();
+  document.getElementById('bgColor').value = p.bgColor;
+  document.getElementById('fgColor').value = p.fgColor;
+}
+
+function syncUI() {
+  // Sliders
+  const sliders = {
+    cols: state.cols,
+    fontSize: state.fontSize,
+    lineHeight: Math.round(state.lineHeight*100),
+    letterSpacing: state.letterSpacing,
+    brightness: state.brightness,
+    contrast: state.contrast,
+    saturation: state.saturation,
+    hue: state.hue,
+    blur: state.blur,
+    posterize: state.posterize,
+    threshold: state.threshold,
+    parallaxInt: state.parallaxInt,
+    parallaxSmooth: Math.round(state.parallaxSmooth*100),
+  };
+  Object.entries(sliders).forEach(([id,v])=>{
+    const el=document.getElementById(id); if(el){el.value=v; updateSliderFill(el);}
+  });
+  updateAllVals();
+  document.getElementById('colorMode').value = state.colorMode;
+  document.getElementById('fontFamily').value = state.fontFamily;
+  // charset
+  document.querySelectorAll('.charset-option').forEach(el=>{
+    el.classList.toggle('active', el.dataset.charset===state.charset);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  UI HELPERS
+// ═══════════════════════════════════════════════════════════════
+function showOutput() {
+  dropzone.classList.add('hidden');
+  outputWrap.classList.add('visible');
+}
+
+function updateAllVals() {
+  const set = (id,v)=>{ const el=document.getElementById(id); if(el) el.textContent=v; };
+  set('colsVal',       state.cols);
+  set('fontSizeVal',   state.fontSize+'px');
+  set('lineHeightVal', state.lineHeight.toFixed(2));
+  set('letterSpacingVal', (state.letterSpacing/10).toFixed(1));
+  set('brightnessVal', (state.brightness>0?'+':'')+state.brightness);
+  set('contrastVal',   (state.contrast>0?'+':'')+state.contrast);
+  set('saturationVal', state.saturation+'%');
+  set('hueVal',        state.hue+'°');
+  set('blurVal',       state.blur||'Off');
+  set('posterizeVal',  state.posterize||'Off');
+  set('thresholdVal',  state.threshold||'Off');
+  set('parallaxIntVal',state.parallaxInt+'px');
+  set('parallaxSmoothVal',(state.parallaxSmooth).toFixed(2));
+}
+
+function updateSliderFill(el) {
+  const min=+el.min, max=+el.max, val=+el.value;
+  const pct = ((val-min)/(max-min)*100).toFixed(1)+'%';
+  el.style.setProperty('--pct', pct);
+}
+
+function toggleEl(id) {
+  const btn = document.getElementById(id);
+  btn.classList.toggle('on');
+  return btn.classList.contains('on');
+}
+
+function hexToRgb(hex) {
+  const r=parseInt(hex.slice(1,3),16);
+  const g=parseInt(hex.slice(3,5),16);
+  const b=parseInt(hex.slice(5,7),16);
+  return [r,g,b];
+}
+function rgbToHsv(r,g,b){
+  const max=Math.max(r,g,b),min=Math.min(r,g,b),d=max-min;
+  let h=0;
+  if(d){if(max===r)h=(g-b)/d%6;else if(max===g)h=(b-r)/d+2;else h=(r-g)/d+4; h/=6; if(h<0)h+=1;}
+  return [h, max?d/max:0, max];
+}
+function hsvToRgb(h,s,v){
+  const i=Math.floor(h*6),f=h*6-i,p=v*(1-s),q=v*(1-f*s),t=v*(1-(1-f)*s);
+  const m=i%6;
+  if(m===0)return[v,t,p];if(m===1)return[q,v,p];if(m===2)return[p,v,t];
+  if(m===3)return[p,q,v];if(m===4)return[t,p,v];return[v,p,q];
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  EVENT WIRING
+// ═══════════════════════════════════════════════════════════════
+
+// Upload
+document.getElementById('uploadBtn').addEventListener('click',()=>fileInput.click());
+fileInput.addEventListener('change',e=>{ if(e.target.files[0]) loadImageFile(e.target.files[0]); });
+
+// Drop zone
+dropzone.addEventListener('click',()=>fileInput.click());
+document.body.addEventListener('dragover',e=>{e.preventDefault();dropzone.classList.add('drag')});
+document.body.addEventListener('dragleave',()=>dropzone.classList.remove('drag'));
+document.body.addEventListener('drop',e=>{
+  e.preventDefault(); dropzone.classList.remove('drag');
+  if(e.dataTransfer.files[0]) loadImageFile(e.dataTransfer.files[0]);
+});
+
+// Sample buttons
+document.querySelectorAll('.sample-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>generateSampleImage(btn.dataset.sample));
+});
+
+// Presets
+document.querySelectorAll('.preset-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.preset-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    applyPreset(btn.dataset.preset);
+  });
+});
+
+// Charset
+document.querySelectorAll('.charset-option').forEach(opt=>{
+  opt.addEventListener('click',()=>{
+    document.querySelectorAll('.charset-option').forEach(o=>o.classList.remove('active'));
+    opt.classList.add('active');
+    state.charset = opt.dataset.charset;
+    scheduleRender();
+  });
+});
+document.getElementById('customCharset').addEventListener('input',e=>{
+  state.customChars = e.target.value || ' .:#@';
+  state.charset = 'custom';
+  document.querySelectorAll('.charset-option').forEach(o=>o.classList.remove('active'));
+  scheduleRender();
+});
+
+// Sliders
+function wireSlider(id, stateKey, transform, displayFn) {
+  const el = document.getElementById(id);
+  el.addEventListener('input',()=>{
+    updateSliderFill(el);
+    state[stateKey] = transform ? transform(+el.value) : +el.value;
+    updateAllVals();
+    scheduleRender();
+  });
+  updateSliderFill(el);
+}
+wireSlider('cols',          'cols',          null);
+wireSlider('fontSize',      'fontSize',      null);
+wireSlider('lineHeight',    'lineHeight',    v=>v/100);
+wireSlider('letterSpacing', 'letterSpacing', null);
+wireSlider('brightness',    'brightness',    null);
+wireSlider('contrast',      'contrast',      null);
+wireSlider('saturation',    'saturation',    null);
+wireSlider('hue',           'hue',           null);
+wireSlider('blur',          'blur',          null);
+wireSlider('posterize',     'posterize',     null);
+wireSlider('threshold',     'threshold',     null);
+wireSlider('parallaxInt',   'parallaxInt',   null);
+wireSlider('parallaxSmooth','parallaxSmooth',v=>v/100);
+
+// Selects
+document.getElementById('colorMode').addEventListener('change',e=>{
+  state.colorMode=e.target.value;
+  document.getElementById('hueRow').style.display=e.target.value==='hue'?'flex':'none';
+  scheduleRender();
+});
+document.getElementById('fontFamily').addEventListener('change',e=>{ state.fontFamily=e.target.value; scheduleRender(); });
+
+// Color pickers
+document.getElementById('bgColor').addEventListener('input',e=>{ state.bgColor=e.target.value; scheduleRender(); });
+document.getElementById('fgColor').addEventListener('input',e=>{ state.fgColor=e.target.value; scheduleRender(); });
+
+// Toggles
+document.getElementById('invertChars').addEventListener('click',()=>{ state.invertChars=toggleEl('invertChars'); scheduleRender(); });
+document.getElementById('edgeDetect').addEventListener('click',()=>{ state.edgeDetect=toggleEl('edgeDetect'); scheduleRender(); });
+document.getElementById('dithering').addEventListener('click',()=>{ state.dithering=toggleEl('dithering'); scheduleRender(); });
+document.getElementById('depthFog').addEventListener('click',()=>{ state.depthFog=toggleEl('depthFog'); scheduleRender(); });
+document.getElementById('perspective3d').addEventListener('click',()=>{ state.perspective3d=toggleEl('perspective3d'); });
+
+// Parallax toggle
+document.getElementById('parallaxToggle').addEventListener('click',()=>{
+  state.parallaxEnabled=toggleEl('parallaxToggle');
+  const ctrl=document.getElementById('parallaxControls');
+  ctrl.style.opacity=state.parallaxEnabled?'1':'0.4';
+  ctrl.style.pointerEvents=state.parallaxEnabled?'auto':'none';
+  scheduleRender();
+});
+document.getElementById('parallaxMode').addEventListener('change',e=>{ state.parallaxMode=e.target.value; if(state.parallaxEnabled&&state.imageLoaded){stopParallax();startParallax();} });
+
+// Depth pills
+document.querySelectorAll('.depth-pill').forEach(pill=>{
+  pill.addEventListener('click',()=>{
+    document.querySelectorAll('.depth-pill').forEach(p=>p.classList.remove('active'));
+    pill.classList.add('active');
+    state.parallaxLayers=parseInt(pill.dataset.layers);
+    scheduleRender();
+  });
+});
+
+// Zoom
+document.getElementById('zoomIn').addEventListener('click',()=>{ state.zoom=Math.min(4,state.zoom+0.1); applyZoom(); });
+document.getElementById('zoomOut').addEventListener('click',()=>{ state.zoom=Math.max(0.1,state.zoom-0.1); applyZoom(); });
+document.getElementById('zoomFit').addEventListener('click',fitZoom);
+
+// Mouse wheel zoom in preview
+svgContainer.addEventListener('wheel',e=>{
+  if(!e.ctrlKey) return;
+  e.preventDefault();
+  state.zoom = Math.max(0.1,Math.min(4, state.zoom - e.deltaY*0.001));
+  applyZoom();
+},{passive:false});
+
+// Export
+document.getElementById('exportSvg').addEventListener('click',exportSVG);
+document.getElementById('exportPng').addEventListener('click',exportPNG);
+document.getElementById('exportTxt').addEventListener('click',exportTXT);
+document.getElementById('copySvg').addEventListener('click',copySVG);
+
+// Accordion sections
+document.querySelectorAll('.section-hdr').forEach(hdr=>{
+  hdr.addEventListener('click',()=>{
+    const body=document.getElementById('body-'+hdr.dataset.section);
+    hdr.classList.toggle('open');
+    body.classList.toggle('hidden');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════
+// Init all slider fills
+document.querySelectorAll('input[type=range]').forEach(updateSliderFill);
+updateAllVals();
+
+// Auto-load gradient sample on start
+setTimeout(()=>generateSampleImage('gradient'), 200);
+</script>
+</body>
+</html>
