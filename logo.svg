@@ -1,0 +1,35 @@
+<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <rect width="32" height="32" rx="7" fill="#000"/>
+  <!-- Ghost grid: empty character cells -->
+  <rect x="4"  y="4"  width="4" height="4" rx=".5" fill="#fff" fill-opacity=".08"/>
+  <rect x="24" y="4"  width="4" height="4" rx=".5" fill="#fff" fill-opacity=".08"/>
+  <rect x="9"  y="9"  width="4" height="4" rx=".5" fill="#fff" fill-opacity=".08"/>
+  <rect x="14" y="9"  width="4" height="4" rx=".5" fill="#fff" fill-opacity=".08"/>
+  <rect x="19" y="9"  width="4" height="4" rx=".5" fill="#fff" fill-opacity=".08"/>
+  <rect x="9"  y="19" width="4" height="4" rx=".5" fill="#fff" fill-opacity=".08"/>
+  <rect x="14" y="19" width="4" height="4" rx=".5" fill="#fff" fill-opacity=".08"/>
+  <rect x="19" y="19" width="4" height="4" rx=".5" fill="#fff" fill-opacity=".08"/>
+  <rect x="9"  y="24" width="4" height="4" rx=".5" fill="#fff" fill-opacity=".08"/>
+  <rect x="14" y="24" width="4" height="4" rx=".5" fill="#fff" fill-opacity=".08"/>
+  <rect x="19" y="24" width="4" height="4" rx=".5" fill="#fff" fill-opacity=".08"/>
+  <!-- Active pixels: letter A in 5×5 bitmap grid -->
+  <!-- Row 0 — top of A: cols 1,2,3 -->
+  <rect x="9"  y="4"  width="4" height="4" rx=".5" fill="#fff"/>
+  <rect x="14" y="4"  width="4" height="4" rx=".5" fill="#fff"/>
+  <rect x="19" y="4"  width="4" height="4" rx=".5" fill="#fff"/>
+  <!-- Row 1 — sides: cols 0,4 -->
+  <rect x="4"  y="9"  width="4" height="4" rx=".5" fill="#fff"/>
+  <rect x="24" y="9"  width="4" height="4" rx=".5" fill="#fff"/>
+  <!-- Row 2 — crossbar: all cols -->
+  <rect x="4"  y="14" width="4" height="4" rx=".5" fill="#fff"/>
+  <rect x="9"  y="14" width="4" height="4" rx=".5" fill="#fff"/>
+  <rect x="14" y="14" width="4" height="4" rx=".5" fill="#fff"/>
+  <rect x="19" y="14" width="4" height="4" rx=".5" fill="#fff"/>
+  <rect x="24" y="14" width="4" height="4" rx=".5" fill="#fff"/>
+  <!-- Row 3 — sides: cols 0,4 -->
+  <rect x="4"  y="19" width="4" height="4" rx=".5" fill="#fff"/>
+  <rect x="24" y="19" width="4" height="4" rx=".5" fill="#fff"/>
+  <!-- Row 4 — base: cols 0,4 -->
+  <rect x="4"  y="24" width="4" height="4" rx=".5" fill="#fff"/>
+  <rect x="24" y="24" width="4" height="4" rx=".5" fill="#fff"/>
+</svg>
