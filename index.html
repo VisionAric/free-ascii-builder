@@ -1399,8 +1399,8 @@ document.querySelectorAll('.section-hdr').forEach(hdr=>{
 document.querySelectorAll('input[type=range]').forEach(updateSliderFill);
 updateAllVals();
 
-// Auto-load gradient sample on start
-setTimeout(()=>generateSampleImage('gradient'), 200);
+// Auto-load default image on start
+setTimeout(()=>loadImageUrl('default.png','checkered-flag'), 200);
 </script>
 </body>
 </html>
