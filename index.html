@@ -337,6 +337,13 @@ input[type=range]::-webkit-slider-runnable-track{
     <div class="section-body" id="body-typo">
       <div class="ctrl">
         <div class="ctrl-row">
+          <div class="ctrl-label">Scale</div>
+          <div class="ctrl-val" id="scaleVal">100%</div>
+        </div>
+        <input type="range" id="scaleSlider" min="10" max="400" value="100"/>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-row">
           <div class="ctrl-label">Font size</div>
           <div class="ctrl-val" id="fontSizeVal">10px</div>
         </div>
@@ -1091,7 +1098,12 @@ function doRender() {
 function applyZoom() {
   svgEl.style.transform = `scale(${state.zoom})`;
   svgEl.style.transformOrigin = 'top left';
-  document.getElementById('zoomVal').textContent = Math.round(state.zoom*100)+'%';
+  const pct = Math.round(state.zoom*100);
+  document.getElementById('zoomVal').textContent = pct+'%';
+  const slider = document.getElementById('scaleSlider');
+  slider.value = Math.min(400, Math.max(10, pct));
+  document.getElementById('scaleVal').textContent = pct+'%';
+  updateSliderFill(slider);
 }
 function fitZoom() {
   const w = svgContainer.clientWidth - 40;
@@ -1369,6 +1381,13 @@ document.getElementById('zoomIn').addEventListener('click',()=>{ state.zoom=Math
 document.getElementById('zoomOut').addEventListener('click',()=>{ state.zoom=Math.max(0.1,state.zoom-0.1); applyZoom(); });
 document.getElementById('zoomFit').addEventListener('click',fitZoom);
 
+// Scale slider (synced with zoom)
+document.getElementById('scaleSlider').addEventListener('input',e=>{
+  state.zoom = +e.target.value / 100;
+  updateSliderFill(e.target);
+  applyZoom();
+});
+
 // Mouse wheel zoom in preview
 svgContainer.addEventListener('wheel',e=>{
   if(!e.ctrlKey) return;
@@ -1397,6 +1416,7 @@ document.querySelectorAll('.section-hdr').forEach(hdr=>{
 // ═══════════════════════════════════════════════════════════════
 // Init all slider fills
 document.querySelectorAll('input[type=range]').forEach(updateSliderFill);
+updateSliderFill(document.getElementById('scaleSlider'));
 updateAllVals();
 
 // Auto-load default image on start
