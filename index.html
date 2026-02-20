@@ -677,9 +677,9 @@ body.dither-mode .zoom-bar{display:none}
       <div class="ctrl">
         <div class="ctrl-row">
           <div class="ctrl-label">Dot size</div>
-          <div class="ctrl-val" id="dsizeVal">2px</div>
+          <div class="ctrl-val" id="dsizeVal">3px</div>
         </div>
-        <input type="range" id="dsize" min="1" max="12" value="2" step="1"/>
+        <input type="range" id="dsize" min="1" max="12" value="3" step="1"/>
       </div>
       <div class="ctrl">
         <div class="ctrl-row">
@@ -691,9 +691,13 @@ body.dither-mode .zoom-bar{display:none}
       <div class="ctrl">
         <div class="ctrl-row">
           <div class="ctrl-label">Contrast</div>
-          <div class="ctrl-val" id="dcontrastVal">0</div>
+          <div class="ctrl-val" id="dcontrastVal">20</div>
         </div>
-        <input type="range" id="dcontrast" min="-100" max="100" value="0"/>
+        <input type="range" id="dcontrast" min="-100" max="100" value="20"/>
+      </div>
+      <div class="toggle-row">
+        <div class="ctrl-label">Round dots</div>
+        <button class="toggle on" id="dshape"></button>
       </div>
       <div class="toggle-row">
         <div class="ctrl-label">Invert</div>
@@ -709,14 +713,14 @@ body.dither-mode .zoom-bar{display:none}
     </div>
     <div class="section-body" id="body-dither-colors">
       <div class="color-row">
-        <div class="color-swatch" style="background:#1a1a1a">
-          <input type="color" id="dfg" value="#1a1a1a"/>
+        <div class="color-swatch" style="background:#111111">
+          <input type="color" id="dfg" value="#111111"/>
         </div>
         <div class="color-label">Dot color</div>
       </div>
       <div class="color-row">
-        <div class="color-swatch" style="background:#b8c4e0">
-          <input type="color" id="dbg" value="#b8c4e0"/>
+        <div class="color-swatch" style="background:#c0cadf">
+          <input type="color" id="dbg" value="#c0cadf"/>
         </div>
         <div class="color-label">Background</div>
       </div>
@@ -2085,12 +2089,13 @@ document.getElementById('ditherUploadBtn').addEventListener('click', () => docum
 // ═══════════════════════════════════════════════════════════════
 const ditherState = {
   algo: 'floyd',
-  dotSize: 2,
-  threshold: 0,   // bias ±100 around midpoint 128
-  contrast: 0,    // ±100
+  dotSize: 3,
+  dotShape: 'circle', // 'circle' | 'square'
+  threshold: 0,       // bias ±100 around midpoint 128
+  contrast: 20,       // ±100 — slight boost by default
   invert: false,
-  fg: '#1a1a1a',
-  bg: '#b8c4e0'
+  fg: '#111111',
+  bg: '#c0cadf'
 };
 
 let ditherDebounce = null;
@@ -2121,17 +2126,21 @@ const BAYER8 = [
 
 function dclamp(v) { return v < 0 ? 0 : v > 255 ? 255 : v; }
 
+// Serpentine scanning: alternates left→right / right→left each row.
+// Eliminates the horizontal "grain" artifacts of a single-direction scan.
 function errorDiffuse(gray, w, h, thr, spread) {
   const d = new Float32Array(gray);
   for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
+    const rtl = (y & 1) === 1; // flip direction on odd rows
+    for (let xi = 0; xi < w; xi++) {
+      const x = rtl ? w - 1 - xi : xi;
       const i = y * w + x;
       const old = dclamp(d[i]);
       const nw = old < thr ? 0 : 255;
       d[i] = nw;
       const err = old - nw;
       for (const [dx, dy, wt] of spread) {
-        const nx = x + dx, ny = y + dy;
+        const nx = x + (rtl ? -dx : dx), ny = y + dy;
         if (nx >= 0 && nx < w && ny >= 0 && ny < h) d[ny * w + nx] += err * wt;
       }
     }
@@ -2206,8 +2215,17 @@ function runDither() {
   for (let i = 0; i < workW * workH; i++) {
     let lum = 0.299 * px[i*4] + 0.587 * px[i*4+1] + 0.114 * px[i*4+2];
     if (cf !== 1) lum = dclamp(cf * (lum - 128) + 128);
-    gray[i] = ditherState.invert ? 255 - lum : lum;
+    gray[i] = lum;
   }
+
+  // Auto-levels: stretch histogram so darkest=0, brightest=255.
+  // Ensures every image uses the full tonal range regardless of exposure.
+  let lo = 255, hi = 0;
+  for (let i = 0; i < gray.length; i++) { if (gray[i] < lo) lo = gray[i]; if (gray[i] > hi) hi = gray[i]; }
+  if (hi > lo) { const s = 255 / (hi - lo); for (let i = 0; i < gray.length; i++) gray[i] = (gray[i] - lo) * s; }
+
+  // Apply invert after leveling
+  if (ditherState.invert) for (let i = 0; i < gray.length; i++) gray[i] = 255 - gray[i];
 
   // Run algorithm
   const thr = 128 + ditherState.threshold;
@@ -2218,8 +2236,6 @@ function runDither() {
   const outC = document.getElementById('ditherCanvas');
   outC.width = cw; outC.height = ch;
   const ctx = outC.getContext('2d');
-  const [bgR,bgG,bgB] = hexToRgb(ditherState.bg);
-  const [fgR,fgG,fgB] = hexToRgb(ditherState.fg);
 
   // Background fill
   ctx.fillStyle = ditherState.bg;
@@ -2229,22 +2245,45 @@ function runDither() {
   const offX = Math.floor((cw - workW * ds) / 2);
   const offY = Math.floor((ch - workH * ds) / 2);
 
-  // Build pixel-block ImageData
-  const out = ctx.createImageData(workW * ds, workH * ds);
-  const od = out.data;
-  for (let y = 0; y < workH; y++) {
-    for (let x = 0; x < workW; x++) {
-      const dot = dithered[y * workW + x] === 0;
-      const r = dot ? fgR : bgR, g = dot ? fgG : bgG, b = dot ? fgB : bgB;
-      for (let dy = 0; dy < ds; dy++) {
-        for (let dx = 0; dx < ds; dx++) {
-          const oi = ((y*ds+dy) * (workW*ds) + (x*ds+dx)) * 4;
-          od[oi]=r; od[oi+1]=g; od[oi+2]=b; od[oi+3]=255;
+  ctx.fillStyle = ditherState.fg;
+
+  if (ditherState.dotShape === 'circle' && ds >= 2) {
+    // ── Circular halftone dots ──────────────────────────────
+    // Collect all dark dots into one Path2D — single fill call is fast.
+    const r = ds * 0.46; // radius ≈ 92% of half-cell; leaves a tiny gap between dots
+    const path = new Path2D();
+    for (let y = 0; y < workH; y++) {
+      for (let x = 0; x < workW; x++) {
+        if (dithered[y * workW + x] === 0) {
+          const cx = offX + x * ds + ds / 2;
+          const cy = offY + y * ds + ds / 2;
+          path.moveTo(cx + r, cy);
+          path.arc(cx, cy, r, 0, Math.PI * 2);
         }
       }
     }
+    ctx.fill(path);
+  } else {
+    // ── Square pixel blocks via ImageData (fastest for small dots) ─
+    const [bgR,bgG,bgB] = hexToRgb(ditherState.bg);
+    const [fgR,fgG,fgB] = hexToRgb(ditherState.fg);
+    const out = ctx.createImageData(workW * ds, workH * ds);
+    const od = out.data;
+    for (let y = 0; y < workH; y++) {
+      for (let x = 0; x < workW; x++) {
+        const dot = dithered[y * workW + x] === 0;
+        const r = dot ? fgR : bgR, g = dot ? fgG : bgG, b = dot ? fgB : bgB;
+        for (let dy = 0; dy < ds; dy++) {
+          for (let dx = 0; dx < ds; dx++) {
+            const oi = ((y*ds+dy) * (workW*ds) + (x*ds+dx)) * 4;
+            od[oi]=r; od[oi+1]=g; od[oi+2]=b; od[oi+3]=255;
+          }
+        }
+      }
+    }
+    ctx.putImageData(out, offX, offY);
   }
-  ctx.putImageData(out, offX, offY);
+
   outC.classList.add('active');
 }
 
@@ -2274,17 +2313,33 @@ function exportDitherSvg() {
   for (let i=0;i<workW*workH;i++) {
     let lum=0.299*px[i*4]+0.587*px[i*4+1]+0.114*px[i*4+2];
     if(cf!==1) lum=dclamp(cf*(lum-128)+128);
-    gray[i]=ditherState.invert?255-lum:lum;
+    gray[i]=lum;
   }
+  // Auto-levels
+  let slo=255,shi=0;
+  for(let i=0;i<gray.length;i++){if(gray[i]<slo)slo=gray[i];if(gray[i]>shi)shi=gray[i];}
+  if(shi>slo){const s=255/(shi-slo);for(let i=0;i<gray.length;i++)gray[i]=(gray[i]-slo)*s;}
+  if(ditherState.invert) for(let i=0;i<gray.length;i++) gray[i]=255-gray[i];
+
   const thr=128+ditherState.threshold;
   const dithered=(DITHER_ALGOS[ditherState.algo]||DITHER_ALGOS.floyd)(gray,workW,workH,thr);
 
-  let rects='';
-  for (let y=0;y<workH;y++) for (let x=0;x<workW;x++) {
-    if (dithered[y*workW+x]===0)
-      rects+=`<rect x="${x*ds}" y="${y*ds}" width="${ds}" height="${ds}"/>`;
+  let dots='';
+  if (ditherState.dotShape === 'circle') {
+    const r = (ds * 0.46).toFixed(2);
+    for (let y=0;y<workH;y++) for (let x=0;x<workW;x++) {
+      if (dithered[y*workW+x]===0) {
+        const cx=(x*ds+ds/2).toFixed(1), cy=(y*ds+ds/2).toFixed(1);
+        dots+=`<circle cx="${cx}" cy="${cy}" r="${r}"/>`;
+      }
+    }
+  } else {
+    for (let y=0;y<workH;y++) for (let x=0;x<workW;x++) {
+      if (dithered[y*workW+x]===0)
+        dots+=`<rect x="${x*ds}" y="${y*ds}" width="${ds}" height="${ds}"/>`;
+    }
   }
-  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${exportW}" height="${exportH}" viewBox="0 0 ${exportW} ${exportH}"><rect width="${exportW}" height="${exportH}" fill="${ditherState.bg}"/><g fill="${ditherState.fg}">${rects}</g></svg>`;
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${exportW}" height="${exportH}" viewBox="0 0 ${exportW} ${exportH}"><rect width="${exportW}" height="${exportH}" fill="${ditherState.bg}"/><g fill="${ditherState.fg}">${dots}</g></svg>`;
   dlBlob(new Blob([svg],{type:'image/svg+xml'}), 'dither.svg');
 }
 
@@ -2312,6 +2367,11 @@ document.querySelectorAll('.algo-pill').forEach(btn => {
   el.addEventListener('input', e => { fn(e.target.value); updateSliderFill(e.target); scheduleDither(); });
 });
 
+document.getElementById('dshape').addEventListener('click', () => {
+  const on = toggleEl('dshape');
+  ditherState.dotShape = on ? 'circle' : 'square';
+  scheduleDither();
+});
 document.getElementById('dinvert').addEventListener('click', () => {
   ditherState.invert = toggleEl('dinvert');
   scheduleDither();
