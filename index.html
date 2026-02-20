@@ -8,6 +8,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=optional" rel="stylesheet"/>
 <link rel="icon" type="image/svg+xml" href="logo.svg"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -328,6 +330,46 @@ body.dither-mode .zoom-bar{display:none}
   font-family:inherit;transition:all .15s;
 }
 .cloud-upload-btn:hover{border-color:rgba(255,255,255,.28);color:var(--text);background:var(--s4)}
+
+/* ── 3D Mode ──────────────────────────────────────────────── */
+body.threed-mode #asciiPresets{display:none}
+body.threed-mode .ascii-sidebar{display:none}
+body.threed-mode #asciiExportGroup{display:none}
+body.threed-mode #svgWrapper{display:none}
+body.threed-mode .zoom-bar{display:none}
+body.threed-mode .dither-sidebar{display:none}
+body.threed-mode #ditherExportGroup{display:none}
+body.threed-mode #ditherCanvas{display:none!important}
+
+.threed-sidebar{display:none;flex-direction:column;height:100%;overflow-y:auto}
+body.threed-mode .threed-sidebar{display:flex}
+
+#threeDExportGroup{display:none}
+body.threed-mode #threeDExportGroup{display:flex}
+
+#threeDCanvas{position:absolute;top:0;left:0;width:100%;height:100%;display:none;z-index:15}
+#threeDCanvas.active{display:block}
+
+.shape-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;padding:8px 12px 14px}
+.shape-tile{
+  aspect-ratio:1;border-radius:8px;cursor:pointer;
+  background:var(--s3);border:1px solid var(--border);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:5px;transition:border-color .15s,transform .12s;
+}
+.shape-tile:hover{border-color:rgba(255,255,255,.25);transform:scale(1.04)}
+.shape-tile.active{border-color:rgba(255,255,255,.5);background:rgba(255,255,255,.05)}
+.shape-icon-dot{width:16px;height:16px;border-radius:3px;flex-shrink:0}
+.shape-tile[data-shape="sphere"] .shape-icon-dot{border-radius:50%}
+.shape-tile[data-shape="torus"] .shape-icon-dot{border-radius:50%;background:transparent!important;border-width:3px;border-style:solid}
+.shape-name-3d{font-size:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--t3);text-align:center}
+.shape-tile.active .shape-name-3d,.shape-tile:hover .shape-name-3d{color:var(--t2)}
+
+.send-to-row{display:flex;gap:4px;padding:10px 12px}
+.send-btn{flex:1;padding:7px 4px;border-radius:6px;background:var(--s3);border:1px solid var(--border);
+  color:var(--t2);font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;
+  transition:all .15s;text-align:center}
+.send-btn:hover{border-color:rgba(255,255,255,.25);color:var(--text);background:var(--s4)}
 </style>
 </head>
 <body>
@@ -343,6 +385,7 @@ body.dither-mode .zoom-bar{display:none}
   <div class="mode-switch">
     <button class="mode-btn active" id="modeAscii">ASCII</button>
     <button class="mode-btn" id="modeDither">Dither</button>
+    <button class="mode-btn" id="mode3D">3D</button>
   </div>
 
   <div class="tb-center" id="asciiPresets">
@@ -365,6 +408,11 @@ body.dither-mode .zoom-bar{display:none}
     <div class="export-group" id="ditherExportGroup">
       <button class="exp-btn" id="ditherExportPng">PNG</button>
       <button class="exp-btn" id="ditherExportSvg">SVG</button>
+    </div>
+    <div class="export-group" id="threeDExportGroup">
+      <button class="exp-btn" id="threeDExportPng">PNG</button>
+      <button class="exp-btn" id="threeDToAscii">→ ASCII</button>
+      <button class="exp-btn" id="threeDToDither">→ Dither</button>
     </div>
     <button class="upload-btn" id="uploadBtn">↑ Upload</button>
     <input type="file" id="fileInput" accept="image/*"/>
@@ -792,6 +840,92 @@ body.dither-mode .zoom-bar{display:none}
 
 </div><!-- /.dither-sidebar -->
 
+<!-- ── 3D SIDEBAR ──────────────────────────────────────────── -->
+<div class="threed-sidebar">
+  <div class="section" style="border-top:1px solid var(--border)">
+    <div class="section-hdr" style="cursor:default;pointer-events:none">Shapes</div>
+  </div>
+  <div class="shape-grid">
+    <div class="shape-tile active" data-shape="cube" title="Cube">
+      <div class="shape-icon-dot" style="background:#e74c3c"></div>
+      <div class="shape-name-3d">Cube</div>
+    </div>
+    <div class="shape-tile" data-shape="sphere" title="Sphere">
+      <div class="shape-icon-dot" style="background:#4a9eff"></div>
+      <div class="shape-name-3d">Sphere</div>
+    </div>
+    <div class="shape-tile" data-shape="cylinder" title="Cylinder">
+      <div class="shape-icon-dot" style="background:#2ecc71;border-radius:4px 4px 0 0"></div>
+      <div class="shape-name-3d">Cylinder</div>
+    </div>
+    <div class="shape-tile" data-shape="cone" title="Cone">
+      <div class="shape-icon-dot" style="background:#f39c12;clip-path:polygon(50% 0%,100% 100%,0% 100%)"></div>
+      <div class="shape-name-3d">Cone</div>
+    </div>
+    <div class="shape-tile" data-shape="torus" title="Torus">
+      <div class="shape-icon-dot" style="border-color:#a855f7"></div>
+      <div class="shape-name-3d">Torus</div>
+    </div>
+    <div class="shape-tile" data-shape="octahedron" title="Octahedron">
+      <div class="shape-icon-dot" style="background:#06b6d4;transform:rotate(45deg)"></div>
+      <div class="shape-name-3d">Octa</div>
+    </div>
+    <div class="shape-tile" data-shape="icosahedron" title="Icosahedron">
+      <div class="shape-icon-dot" style="background:#ec4899;border-radius:50% 0 50% 0"></div>
+      <div class="shape-name-3d">Icosa</div>
+    </div>
+    <div class="shape-tile" data-shape="torusKnot" title="Torus Knot">
+      <div class="shape-icon-dot" style="background:#fb923c;border-radius:50% 50% 0 50%"></div>
+      <div class="shape-name-3d">Knot</div>
+    </div>
+    <div class="shape-tile" data-shape="dodecahedron" title="Dodecahedron">
+      <div class="shape-icon-dot" style="background:#22d3ee;clip-path:polygon(50% 0%,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%)"></div>
+      <div class="shape-name-3d">Dodeca</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-hdr open" data-section="3d-lighting">Lighting <span class="arrow">▾</span></div>
+    <div class="section-body" id="body-3d-lighting">
+      <div class="ctrl">
+        <div class="ctrl-row">
+          <div class="ctrl-label">Key intensity</div>
+          <div class="ctrl-val" id="keyLightVal">1.8</div>
+        </div>
+        <input type="range" id="keyLight" min="0" max="40" value="18" step="1"/>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-row">
+          <div class="ctrl-label">Fill intensity</div>
+          <div class="ctrl-val" id="fillLightVal">0.6</div>
+        </div>
+        <input type="range" id="fillLight" min="0" max="20" value="6" step="1"/>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-label">Environment</div>
+        <select id="threeEnv">
+          <option value="dark">Dark Studio</option>
+          <option value="soft">Soft White</option>
+          <option value="neon">Neon Blue</option>
+          <option value="warm">Warm Amber</option>
+        </select>
+      </div>
+      <div class="toggle-row">
+        <div class="ctrl-label">Auto-rotate</div>
+        <button class="toggle on" id="threeAutoRotate"></button>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:auto;border-top:1px solid var(--border);padding:10px 12px">
+    <div style="font-size:9px;color:var(--t3);text-align:center;margin-bottom:8px;letter-spacing:.06em;text-transform:uppercase">Send to</div>
+    <div class="send-to-row" style="padding:0">
+      <button class="send-btn" id="sendToAscii">ASCII</button>
+      <button class="send-btn" id="sendToDither">Dither</button>
+    </div>
+  </div>
+</div><!-- /.threed-sidebar -->
+
 </aside>
 
 <!-- ── PREVIEW ───────────────────────────────────────────────── -->
@@ -820,6 +954,7 @@ body.dither-mode .zoom-bar{display:none}
     <div class="svg-container" id="svgContainer">
       <canvas id="animCanvas"></canvas>
       <canvas id="ditherCanvas"></canvas>
+      <canvas id="threeDCanvas"></canvas>
       <div id="svgWrapper">
         <svg id="asciiSvg" xmlns="http://www.w3.org/2000/svg"></svg>
       </div>
@@ -2112,34 +2247,51 @@ document.querySelectorAll('.section-hdr').forEach(hdr=>{
 });
 
 // ═══════════════════════════════════════════════════════════════
-//  MODE SWITCHING (ASCII ↔ DITHER)
+//  MODE SWITCHING (ASCII ↔ DITHER ↔ 3D)
 // ═══════════════════════════════════════════════════════════════
 let appMode = 'ascii';
 
 function switchMode(mode) {
   appMode = mode;
   document.body.classList.toggle('dither-mode', mode === 'dither');
+  document.body.classList.toggle('threed-mode', mode === '3d');
   document.getElementById('modeAscii').classList.toggle('active', mode === 'ascii');
   document.getElementById('modeDither').classList.toggle('active', mode === 'dither');
-  if (mode === 'dither') {
-    // Stop any running animation
+  document.getElementById('mode3D').classList.toggle('active', mode === '3d');
+
+  const dc = document.getElementById('ditherCanvas');
+  const tc = document.getElementById('threeDCanvas');
+
+  if (mode === '3d') {
     if (animRaf) stopAnimation();
-    if (state.imageLoaded) {
-      showOutput();       // make sure outputWrap is visible
-      scheduleDither();
-    }
+    dc.classList.remove('active');
+    tc.classList.add('active');
+    showOutput(); // show container without needing an image
+    // Double-RAF: wait for browser to reflow before measuring container size
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (!threeRenderer) { initThreeJS(); loadThreeShape(activeShapeId); }
+      else resizeThreeJS();
+      startThreeLoop();
+    }));
+  } else if (mode === 'dither') {
+    stopThreeLoop();
+    tc.classList.remove('active');
+    if (animRaf) stopAnimation();
+    if (state.imageLoaded) { showOutput(); scheduleDither(); }
   } else {
-    // Back to ASCII: clear dither canvas, restore ASCII view
-    const dc = document.getElementById('ditherCanvas');
+    // ASCII
+    stopThreeLoop();
+    tc.classList.remove('active');
     dc.classList.remove('active');
     dc.style.display = 'none';
-    setTimeout(() => { dc.style.display = ''; }, 0); // reset to CSS-controlled display
+    setTimeout(() => { dc.style.display = ''; }, 0);
     if (state.imageLoaded) { showOutput(); scheduleRender(); }
   }
 }
 
 document.getElementById('modeAscii').addEventListener('click', () => switchMode('ascii'));
 document.getElementById('modeDither').addEventListener('click', () => switchMode('dither'));
+document.getElementById('mode3D').addEventListener('click', () => switchMode('3d'));
 
 // Cloud upload button in dither library panel
 document.getElementById('ditherUploadBtn').addEventListener('click', () => document.getElementById('fileInput').click());
@@ -2470,8 +2622,241 @@ document.getElementById('dbg').addEventListener('input', e => {
   scheduleDither();
 });
 
-// Resize: re-render dither when window resizes
-window.addEventListener('resize', () => { if(appMode==='dither') scheduleDither(); });
+// Resize: re-render dither/3D when window resizes
+window.addEventListener('resize', () => {
+  if (appMode==='dither') scheduleDither();
+  else if (appMode==='3d') resizeThreeJS();
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  3D ENGINE
+// ═══════════════════════════════════════════════════════════════
+const THREE_SHAPES = [
+  { id:'cube',        name:'Cube',        color:'#e74c3c', make:()=>new THREE.BoxGeometry(1.6,1.6,1.6) },
+  { id:'sphere',      name:'Sphere',      color:'#4a9eff', make:()=>new THREE.SphereGeometry(1,48,48) },
+  { id:'cylinder',    name:'Cylinder',    color:'#2ecc71', make:()=>new THREE.CylinderGeometry(.8,.8,1.8,32) },
+  { id:'cone',        name:'Cone',        color:'#f39c12', make:()=>new THREE.ConeGeometry(1,2,32) },
+  { id:'torus',       name:'Torus',       color:'#a855f7', make:()=>new THREE.TorusGeometry(.9,.32,20,64) },
+  { id:'octahedron',  name:'Octahedron',  color:'#06b6d4', make:()=>new THREE.OctahedronGeometry(1.2,0) },
+  { id:'icosahedron', name:'Icosahedron', color:'#ec4899', make:()=>new THREE.IcosahedronGeometry(1.2,0) },
+  { id:'torusKnot',   name:'Torus Knot',  color:'#fb923c', make:()=>new THREE.TorusKnotGeometry(.7,.25,120,18) },
+  { id:'dodecahedron',name:'Dodecahedron',color:'#22d3ee', make:()=>new THREE.DodecahedronGeometry(1.2,0) },
+];
+
+let threeScene=null, threeCamera=null, threeRenderer=null, threeControls=null;
+let threeMesh=null, threeRaf=null, activeShapeId='cube';
+let threeKeyLight=null, threeFillLight=null, threeAutoRotating=true;
+
+const THREE_ENVS = {
+  dark:  { bg:0x0d0d0f, hemi:[0x1a1a2e, 0x0a0a0a, 0.5] },
+  soft:  { bg:0x1e1e1e, hemi:[0x303040, 0x101010, 0.8] },
+  neon:  { bg:0x050510, hemi:[0x0a0a40, 0x050505, 0.6] },
+  warm:  { bg:0x0f0b06, hemi:[0x2a1800, 0x080402, 0.7] },
+};
+let threeHemi=null, currentEnv='dark';
+
+function initThreeJS() {
+  if (threeRenderer) return;
+  const canvas3d = document.getElementById('threeDCanvas');
+  const container = document.getElementById('svgContainer');
+  // Measure after reflow; fall back to window minus sidebar/bars
+  const W = container.clientWidth  || (window.innerWidth  - 268);
+  const H = container.clientHeight || (window.innerHeight - 46 - 28);
+
+  threeScene = new THREE.Scene();
+  threeScene.background = new THREE.Color(THREE_ENVS.dark.bg);
+  threeScene.fog = new THREE.FogExp2(THREE_ENVS.dark.bg, 0.035);
+
+  threeCamera = new THREE.PerspectiveCamera(45, W/H, 0.1, 200);
+  threeCamera.position.set(0, 1.6, 4.8);
+
+  threeRenderer = new THREE.WebGLRenderer({ canvas: canvas3d, antialias: true });
+  threeRenderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  // false = don't let Three.js override canvas CSS width/height (inset:0 handles that)
+  threeRenderer.setSize(W, H, false);
+  threeRenderer.shadowMap.enabled = true;
+  threeRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  threeRenderer.outputEncoding = THREE.sRGBEncoding;
+  threeRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+  threeRenderer.toneMappingExposure = 1.1;
+
+  threeControls = new THREE.OrbitControls(threeCamera, canvas3d);
+  threeControls.enableDamping = true;
+  threeControls.dampingFactor = 0.07;
+  threeControls.minDistance = 2;
+  threeControls.maxDistance = 18;
+  threeControls.maxPolarAngle = Math.PI * 0.85;
+
+  // Key light (warm, casts shadows)
+  threeKeyLight = new THREE.DirectionalLight(0xfff5e0, 1.8);
+  threeKeyLight.position.set(3.5, 5, 4);
+  threeKeyLight.castShadow = true;
+  threeKeyLight.shadow.mapSize.set(2048, 2048);
+  threeKeyLight.shadow.camera.near = 0.5;
+  threeKeyLight.shadow.camera.far = 30;
+  threeKeyLight.shadow.camera.left = -6;
+  threeKeyLight.shadow.camera.right = 6;
+  threeKeyLight.shadow.camera.top = 6;
+  threeKeyLight.shadow.camera.bottom = -6;
+  threeKeyLight.shadow.radius = 3;
+  threeScene.add(threeKeyLight);
+
+  // Fill light (cool blue)
+  threeFillLight = new THREE.DirectionalLight(0x8ab4f8, 0.6);
+  threeFillLight.position.set(-4, 2, -2);
+  threeScene.add(threeFillLight);
+
+  // Rim light (back edge)
+  const rimLight = new THREE.DirectionalLight(0xffffff, 0.35);
+  rimLight.position.set(0, -3, -5);
+  threeScene.add(rimLight);
+
+  // Hemisphere (sky/ground ambient)
+  threeHemi = new THREE.HemisphereLight(0x1a1a2e, 0x0a0a0a, 0.5);
+  threeScene.add(threeHemi);
+
+  // Shadow receiver plane
+  const planeGeo = new THREE.PlaneGeometry(30, 30);
+  const planeMat = new THREE.ShadowMaterial({ opacity: 0.3 });
+  const shadowPlane = new THREE.Mesh(planeGeo, planeMat);
+  shadowPlane.rotation.x = -Math.PI / 2;
+  shadowPlane.position.y = -1.6;
+  shadowPlane.receiveShadow = true;
+  threeScene.add(shadowPlane);
+
+  // Grid floor
+  const grid = new THREE.GridHelper(20, 28, 0x1e1e2e, 0x161622);
+  grid.position.y = -1.6;
+  grid.material.opacity = 0.6;
+  grid.material.transparent = true;
+  threeScene.add(grid);
+
+  // Wire up controls
+  document.getElementById('keyLight').addEventListener('input', e => {
+    const v = +e.target.value / 10;
+    document.getElementById('keyLightVal').textContent = v.toFixed(1);
+    updateSliderFill(e.target);
+    if (threeKeyLight) threeKeyLight.intensity = v;
+  });
+  document.getElementById('fillLight').addEventListener('input', e => {
+    const v = +e.target.value / 10;
+    document.getElementById('fillLightVal').textContent = v.toFixed(1);
+    updateSliderFill(e.target);
+    if (threeFillLight) threeFillLight.intensity = v;
+  });
+  document.getElementById('threeEnv').addEventListener('change', e => {
+    setThreeEnv(e.target.value);
+  });
+  document.getElementById('threeAutoRotate').addEventListener('click', () => {
+    threeAutoRotating = toggleEl('threeAutoRotate');
+  });
+
+  // Shape tiles
+  document.querySelectorAll('.shape-tile').forEach(tile => {
+    tile.addEventListener('click', () => loadThreeShape(tile.dataset.shape));
+  });
+
+  // Sidebar send-to
+  document.getElementById('sendToAscii').addEventListener('click', () => sendThreeTo('ascii'));
+  document.getElementById('sendToDither').addEventListener('click', () => sendThreeTo('dither'));
+
+  // Topbar export
+  document.getElementById('threeDExportPng').addEventListener('click', () => {
+    threeRenderer.render(threeScene, threeCamera);
+    const link = document.createElement('a');
+    link.download = 'scene-3d.png';
+    link.href = document.getElementById('threeDCanvas').toDataURL('image/png');
+    link.click();
+  });
+  document.getElementById('threeDToAscii').addEventListener('click', () => sendThreeTo('ascii'));
+  document.getElementById('threeDToDither').addEventListener('click', () => sendThreeTo('dither'));
+
+  // Init slider fills
+  ['keyLight','fillLight'].forEach(id => updateSliderFill(document.getElementById(id)));
+}
+
+function setThreeEnv(envKey) {
+  currentEnv = envKey;
+  const env = THREE_ENVS[envKey] || THREE_ENVS.dark;
+  threeScene.background = new THREE.Color(env.bg);
+  threeScene.fog.color = new THREE.Color(env.bg);
+  threeHemi.color.set(env.hemi[0]);
+  threeHemi.groundColor.set(env.hemi[1]);
+  threeHemi.intensity = env.hemi[2];
+}
+
+function loadThreeShape(shapeId) {
+  if (!threeScene) { initThreeJS(); }
+  const def = THREE_SHAPES.find(s => s.id === shapeId);
+  if (!def) return;
+  activeShapeId = shapeId;
+
+  if (threeMesh) {
+    threeScene.remove(threeMesh);
+    threeMesh.geometry.dispose();
+    threeMesh.material.dispose();
+    threeMesh = null;
+  }
+
+  const geo = def.make();
+  const mat = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(def.color),
+    roughness: 0.36,
+    metalness: 0.22,
+  });
+  threeMesh = new THREE.Mesh(geo, mat);
+  threeMesh.castShadow = true;
+  threeMesh.receiveShadow = true;
+  threeScene.add(threeMesh);
+
+  document.querySelectorAll('.shape-tile').forEach(t => {
+    t.classList.toggle('active', t.dataset.shape === shapeId);
+  });
+}
+
+function startThreeLoop() {
+  if (threeRaf) return;
+  function loop() {
+    threeRaf = requestAnimationFrame(loop);
+    threeControls.update();
+    if (threeMesh && threeAutoRotating) threeMesh.rotation.y += 0.005;
+    threeRenderer.render(threeScene, threeCamera);
+  }
+  loop();
+}
+
+function stopThreeLoop() {
+  if (threeRaf) { cancelAnimationFrame(threeRaf); threeRaf = null; }
+}
+
+function resizeThreeJS() {
+  if (!threeRenderer) return;
+  const container = document.getElementById('svgContainer');
+  const W = container.clientWidth  || (window.innerWidth  - 268);
+  const H = container.clientHeight || (window.innerHeight - 46 - 28);
+  threeCamera.aspect = W / H;
+  threeCamera.updateProjectionMatrix();
+  threeRenderer.setSize(W, H, false);
+}
+
+function sendThreeTo(targetMode) {
+  if (!threeRenderer) return;
+  // Force render then capture
+  threeRenderer.render(threeScene, threeCamera);
+  const dataUrl = document.getElementById('threeDCanvas').toDataURL('image/png');
+  switchMode(targetMode);
+  const img = new Image();
+  img.onload = () => {
+    state.imageEl = img;
+    state.imageLoaded = true;
+    state.imgW = img.width;
+    state.imgH = img.height;
+    showOutput();
+    if (targetMode === 'ascii') scheduleRender();
+    else if (targetMode === 'dither') scheduleDither();
+  };
+  img.src = dataUrl;
+}
 
 // ═══════════════════════════════════════════════════════════════
 //  INIT
