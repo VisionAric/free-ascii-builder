@@ -295,9 +295,12 @@ body.dither-mode .dither-sidebar{display:flex}
 #ditherExportGroup{display:none}
 body.dither-mode #ditherExportGroup{display:flex}
 
-/* Dither output canvas */
-#ditherCanvas{position:absolute;inset:0;display:none;pointer-events:none;image-rendering:pixelated}
+/* Dither output canvas — z-index above svgWrapper which has will-change:transform */
+#ditherCanvas{position:absolute;inset:0;display:none;pointer-events:none;image-rendering:pixelated;z-index:5}
 #ditherCanvas.active{display:block}
+/* Hide ASCII art and zoom bar in dither mode */
+body.dither-mode #svgWrapper{display:none}
+body.dither-mode .zoom-bar{display:none}
 
 /* Algorithm picker grid */
 .algo-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px}
@@ -2053,12 +2056,23 @@ function switchMode(mode) {
   document.getElementById('modeAscii').classList.toggle('active', mode === 'ascii');
   document.getElementById('modeDither').classList.toggle('active', mode === 'dither');
   if (mode === 'dither') {
+    // Stop any running animation
+    if (animRaf) stopAnimation();
     const noImg = document.getElementById('ditherNoImg');
-    if (state.imageLoaded) { noImg.style.display = 'none'; scheduleDither(); }
-    else { noImg.style.display = 'block'; }
+    if (state.imageLoaded) {
+      noImg.style.display = 'none';
+      showOutput();       // make sure outputWrap is visible
+      scheduleDither();
+    } else {
+      noImg.style.display = 'block';
+    }
   } else {
-    document.getElementById('ditherCanvas').classList.remove('active');
-    if (state.imageLoaded) scheduleRender();
+    // Back to ASCII: clear dither canvas, restore ASCII view
+    const dc = document.getElementById('ditherCanvas');
+    dc.classList.remove('active');
+    dc.style.display = 'none';
+    setTimeout(() => { dc.style.display = ''; }, 0); // reset to CSS-controlled display
+    if (state.imageLoaded) { showOutput(); scheduleRender(); }
   }
 }
 
