@@ -1752,140 +1752,73 @@ function stopAnimation(){
 }
 
 // ── Lottie export helpers ─────────────────────────────────────
-function getLottieFont() {
-  const ff = state.fontFamily || '';
-  if (ff.includes('JetBrains')) return {fName:'JetBrainsMono-Regular', fFamily:'JetBrains Mono', fStyle:'Regular'};
-  if (ff.includes('Lucida'))    return {fName:'LucidaConsole',          fFamily:'Lucida Console',  fStyle:'Regular'};
-  return {fName:'CourierNew', fFamily:'Courier New', fStyle:'Regular'};
-}
-
-// Snapshot one frame from a physics state (pure data, no DOM)
-function captureAnimFrame(s, key) {
-  if (key === 'symbol-tide') {
-    return s.grid.map(row =>
-      row.map(cell => ({char: cell.char || '@', alpha: cell.displayAlpha || 0}))
-    );
-  }
-  // Noise field: recompute from current t
-  const {chars, cols, rows, t: T} = s;
-  return Array.from({length: rows}, (_, r) =>
-    Array.from({length: cols}, (_, c) => {
-      const nx = c / cols, ny = r / rows;
-      const v = (
-        Math.sin(nx*5.1+T)*Math.cos(ny*3.7-T*0.8)*0.5 +
-        Math.sin(nx*10.3-T*1.3)*Math.cos(ny*8.1+T*0.6)*0.25 +
-        Math.sin((nx+ny)*7.2+T*0.9)*0.15 +
-        Math.cos(nx*2.4-ny*4.8+T*0.4)*0.1 + 0.5
-      );
-      const cl = Math.max(0, Math.min(1, v));
-      const idx = Math.floor(cl * (chars.length - 1));
-      return {char: idx < 1 ? ' ' : chars[idx], alpha: idx < 1 ? 0 : 0.1 + cl * 0.85};
-    })
-  );
-}
-
 function exportAnimLottie() {
   if (!animKey || !animStateObj) return;
 
-  // ── Simulation parameters ──────────────────────────────────
-  const fps = 12;
-  const totalFrames = fps * 3;   // 36 frames = 3-second clip; player loops it
+  // ── Parameters ─────────────────────────────────────────────
+  // Image-frame approach: render each frame to an offscreen canvas,
+  // embed as base64 PNG assets (ty:2). Works in every Lottie player —
+  // no font-embedding needed, no ty:5 text layer complexity.
+  const fps = 8;
+  const totalFrames = fps * 3;   // 24 frames = 3-second loop
   const dtMs = 1000 / fps;
-  const exportW = 400, exportH = 280;
+  const exportW = 320, exportH = 224;
   const anim = ANIMATIONS[animKey];
 
-  // Use a fresh, independent state so we don't disturb the live preview
+  // Offscreen canvas for rendering
+  const offCanvas = document.createElement('canvas');
+  offCanvas.width = exportW; offCanvas.height = exportH;
+  const ctx = offCanvas.getContext('2d');
+
+  // Fresh state — doesn't disturb the live animation
   const s = anim.createState(exportW, exportH);
 
-  // Warm up ~1 s at 30 fps so cells aren't all at zero
+  // Warm up ~1s so cells aren't cold/empty
   for (let i = 0; i < 30; i++) {
     const t = (i + 1) * 33;
     animKey === 'symbol-tide' ? anim.stepPhysics(s, 33, t) : anim.stepPhysics(s, 33);
   }
 
-  // Capture totalFrames snapshots
-  const frames = [];
+  // ── Render frames ──────────────────────────────────────────
+  const assets = [], layers = [];
+  const bg = state.bgColor || '#000000';
+
   for (let f = 0; f < totalFrames; f++) {
-    const t = 1000 + f * dtMs;
-    animKey === 'symbol-tide' ? anim.stepPhysics(s, dtMs, t) : anim.stepPhysics(s, dtMs);
-    frames.push(captureAnimFrame(s, animKey));
-  }
-
-  // ── Lottie layer construction ──────────────────────────────
-  const rows = frames[0].length, cols = frames[0][0].length, sz = s.sz;
-  const col = state.animColor || '#ffffff';
-  const [cr8, cg8, cb8] = hexToRgb(col);
-  const fc = [+(cr8/255).toFixed(4), +(cg8/255).toFixed(4), +(cb8/255).toFixed(4)];
-  const font = getLottieFont();
-
-  const layers = [];
-  let ind = 1;
-
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const alphas = frames.map(fr => fr[r][c].alpha);
-      if (Math.max(...alphas) < 0.04) continue;   // skip always-invisible cells
-
-      // Opacity keyframes — include only when value shifts > 2% to keep file small
-      const opKfs = [];
-      let prevA = -1;
-      for (let f = 0; f < totalFrames; f++) {
-        const a = alphas[f];
-        if (f === 0 || f === totalFrames - 1 || Math.abs(a - prevA) > 0.02) {
-          const kf = {t: f, s: [+(a * 100).toFixed(1)]};
-          // Linear easing between keyframes
-          if (f < totalFrames - 1) { kf.i = {x:[1],y:[1]}; kf.o = {x:[0],y:[0]}; }
-          opKfs.push(kf);
-          prevA = a;
-        }
-      }
-
-      // Text (character) keyframes — only when the char changes
-      const charKfs = [];
-      let lastCh = null;
-      for (let f = 0; f < totalFrames; f++) {
-        const ch = frames[f][r][c].char;
-        if (ch !== lastCh) {
-          charKfs.push({
-            s: {s: sz - 1, f: font.fName, t: ch, j: 0, tr: 0, lh: sz, ls: 0, fc},
-            t: f
-          });
-          lastCh = ch;
-        }
-      }
-
-      layers.push({
-        ddd: 0, ind, ty: 5, nm: `${r}x${c}`, sr: 1,
-        ks: {
-          o: {a: 1, k: opKfs},
-          r: {a: 0, k: 0},
-          p: {a: 0, k: [c * sz, r * sz + sz, 0]},
-          a: {a: 0, k: [0, 0, 0]},
-          s: {a: 0, k: [100, 100, 100]}
-        },
-        ao: 0,
-        t: {d: {k: charKfs}, p: {}, m: {g: 1, a: {a: 0, k: [0, 0]}}, a: []},
-        ip: 0, op: totalFrames, st: 0, bm: 0
-      });
-      ind++;
+    // Fill background, then draw animation frame
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, exportW, exportH);
+    if (animKey === 'symbol-tide') {
+      anim.drawFrame(ctx, s, dtMs, 1000 + f * dtMs);
+    } else {
+      anim.drawFrame(ctx, s, dtMs);
     }
+
+    // Capture as base64 PNG (ASCII art compresses very well)
+    const id = `img_${f}`;
+    const b64 = offCanvas.toDataURL('image/png').split(',')[1];
+    assets.push({id, w: exportW, h: exportH, u: '', p: b64, e: 1});
+
+    // Each image layer is visible for exactly 1 frame → slideshow loop
+    layers.push({
+      ddd: 0, ind: f + 1, ty: 2, nm: `f${f}`,
+      refId: id, sr: 1,
+      ks: {
+        o: {a: 0, k: 100},
+        r: {a: 0, k: 0},
+        p: {a: 0, k: [exportW / 2, exportH / 2, 0]},
+        a: {a: 0, k: [exportW / 2, exportH / 2, 0]},
+        s: {a: 0, k: [100, 100, 100]}
+      },
+      ao: 0, ip: f, op: f + 1, st: 0, bm: 0
+    });
   }
 
   // ── Root Lottie object ─────────────────────────────────────
-  // ip:0 / op:totalFrames defines the clip; Lottie players loop this by default
   const lottie = {
     v: '5.5.7', fr: fps, ip: 0, op: totalFrames,
     w: exportW, h: exportH,
     nm: ANIMATIONS[animKey].label,
-    ddd: 0, assets: [],
-    fonts: {
-      list: [{
-        fName: font.fName, fFamily: font.fFamily, fStyle: font.fStyle,
-        fPath: '', fWeight: '', fClass: '', fSearchable: '',
-        fData: {}, fOrigin: 0, origin: 0, ascent: 75
-      }]
-    },
-    layers
+    ddd: 0, assets, layers
   };
 
   dlBlob(
