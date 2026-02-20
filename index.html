@@ -352,7 +352,7 @@ input[type=range]::-webkit-slider-runnable-track{
         <div style="display:flex;align-items:center;gap:8px;padding:8px 12px 4px">
           <div class="ctrl-label" style="font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--t3)">Color</div>
           <input type="color" id="animColorPicker" value="#ffffff" title="Animation color" style="width:26px;height:22px;padding:1px;border:1px solid var(--border);border-radius:5px;background:var(--s3);cursor:pointer;"/>
-          <button class="exp-btn" id="exportAnimJson" title="Download vector JSON" style="margin-left:auto;opacity:.4;pointer-events:none">↓ JSON</button>
+          <button class="exp-btn" id="exportAnimJson" title="Download Lottie JSON (loops in any Lottie player)" style="margin-left:auto;opacity:.4;pointer-events:none">↓ Lottie</button>
         </div>
         <div class="lib-anim-grid" style="display:grid">
           <div class="lib-anim-thumb" data-anim="symbol-tide" title="Symbol Tide">
@@ -1811,28 +1811,147 @@ function stopAnimation(){
   if(btn){btn.style.opacity='0.4';btn.style.pointerEvents='none';}
 }
 
-function exportAnimJSON(){
-  if(!animKey||!animStateObj) return;
-  const anim=ANIMATIONS[animKey];
-  const svgStr=anim.toSVGString(animStateObj);
-  const blob=new Blob([JSON.stringify({
-    tool:'Free ASCII Builder',
-    url:'https://visionaric.github.io/free-ascii-builder',
-    version:'1.0',
-    animation:animKey,
-    label:anim.label,
-    color:state.animColor||'#ffffff',
-    backgroundColor:'transparent',
-    exported:new Date().toISOString().slice(0,10),
-    params:{
-      characters:Array.isArray(animStateObj.chars)?animStateObj.chars.join(''):animStateObj.chars,
-      gridSize:animStateObj.sz,
-      width:animStateObj.w,
-      height:animStateObj.h
+// ── Lottie export helpers ─────────────────────────────────────
+function getLottieFont() {
+  const ff = state.fontFamily || '';
+  if (ff.includes('JetBrains')) return {fName:'JetBrainsMono-Regular', fFamily:'JetBrains Mono', fStyle:'Regular'};
+  if (ff.includes('Lucida'))    return {fName:'LucidaConsole',          fFamily:'Lucida Console',  fStyle:'Regular'};
+  return {fName:'CourierNew', fFamily:'Courier New', fStyle:'Regular'};
+}
+
+// Snapshot one frame from a physics state (pure data, no DOM)
+function captureAnimFrame(s, key) {
+  if (key === 'symbol-tide') {
+    return s.grid.map(row =>
+      row.map(cell => ({char: cell.char || '@', alpha: cell.displayAlpha || 0}))
+    );
+  }
+  // Noise field: recompute from current t
+  const {chars, cols, rows, t: T} = s;
+  return Array.from({length: rows}, (_, r) =>
+    Array.from({length: cols}, (_, c) => {
+      const nx = c / cols, ny = r / rows;
+      const v = (
+        Math.sin(nx*5.1+T)*Math.cos(ny*3.7-T*0.8)*0.5 +
+        Math.sin(nx*10.3-T*1.3)*Math.cos(ny*8.1+T*0.6)*0.25 +
+        Math.sin((nx+ny)*7.2+T*0.9)*0.15 +
+        Math.cos(nx*2.4-ny*4.8+T*0.4)*0.1 + 0.5
+      );
+      const cl = Math.max(0, Math.min(1, v));
+      const idx = Math.floor(cl * (chars.length - 1));
+      return {char: idx < 1 ? ' ' : chars[idx], alpha: idx < 1 ? 0 : 0.1 + cl * 0.85};
+    })
+  );
+}
+
+function exportAnimLottie() {
+  if (!animKey || !animStateObj) return;
+
+  // ── Simulation parameters ──────────────────────────────────
+  const fps = 12;
+  const totalFrames = fps * 3;   // 36 frames = 3-second clip; player loops it
+  const dtMs = 1000 / fps;
+  const exportW = 400, exportH = 280;
+  const anim = ANIMATIONS[animKey];
+
+  // Use a fresh, independent state so we don't disturb the live preview
+  const s = anim.createState(exportW, exportH);
+
+  // Warm up ~1 s at 30 fps so cells aren't all at zero
+  for (let i = 0; i < 30; i++) {
+    const t = (i + 1) * 33;
+    animKey === 'symbol-tide' ? anim.stepPhysics(s, 33, t) : anim.stepPhysics(s, 33);
+  }
+
+  // Capture totalFrames snapshots
+  const frames = [];
+  for (let f = 0; f < totalFrames; f++) {
+    const t = 1000 + f * dtMs;
+    animKey === 'symbol-tide' ? anim.stepPhysics(s, dtMs, t) : anim.stepPhysics(s, dtMs);
+    frames.push(captureAnimFrame(s, animKey));
+  }
+
+  // ── Lottie layer construction ──────────────────────────────
+  const rows = frames[0].length, cols = frames[0][0].length, sz = s.sz;
+  const col = state.animColor || '#ffffff';
+  const [cr8, cg8, cb8] = hexToRgb(col);
+  const fc = [+(cr8/255).toFixed(4), +(cg8/255).toFixed(4), +(cb8/255).toFixed(4)];
+  const font = getLottieFont();
+
+  const layers = [];
+  let ind = 1;
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const alphas = frames.map(fr => fr[r][c].alpha);
+      if (Math.max(...alphas) < 0.04) continue;   // skip always-invisible cells
+
+      // Opacity keyframes — include only when value shifts > 2% to keep file small
+      const opKfs = [];
+      let prevA = -1;
+      for (let f = 0; f < totalFrames; f++) {
+        const a = alphas[f];
+        if (f === 0 || f === totalFrames - 1 || Math.abs(a - prevA) > 0.02) {
+          const kf = {t: f, s: [+(a * 100).toFixed(1)]};
+          // Linear easing between keyframes
+          if (f < totalFrames - 1) { kf.i = {x:[1],y:[1]}; kf.o = {x:[0],y:[0]}; }
+          opKfs.push(kf);
+          prevA = a;
+        }
+      }
+
+      // Text (character) keyframes — only when the char changes
+      const charKfs = [];
+      let lastCh = null;
+      for (let f = 0; f < totalFrames; f++) {
+        const ch = frames[f][r][c].char;
+        if (ch !== lastCh) {
+          charKfs.push({
+            s: {s: sz - 1, f: font.fName, t: ch, j: 0, tr: 0, lh: sz, ls: 0, fc},
+            t: f
+          });
+          lastCh = ch;
+        }
+      }
+
+      layers.push({
+        ddd: 0, ind, ty: 5, nm: `${r}x${c}`, sr: 1,
+        ks: {
+          o: {a: 1, k: opKfs},
+          r: {a: 0, k: 0},
+          p: {a: 0, k: [c * sz, r * sz + sz, 0]},
+          a: {a: 0, k: [0, 0, 0]},
+          s: {a: 0, k: [100, 100, 100]}
+        },
+        ao: 0,
+        t: {d: {k: charKfs}, p: {}, m: {g: 1, a: {a: 0, k: [0, 0]}}, a: []},
+        ip: 0, op: totalFrames, st: 0, bm: 0
+      });
+      ind++;
+    }
+  }
+
+  // ── Root Lottie object ─────────────────────────────────────
+  // ip:0 / op:totalFrames defines the clip; Lottie players loop this by default
+  const lottie = {
+    v: '5.5.7', fr: fps, ip: 0, op: totalFrames,
+    w: exportW, h: exportH,
+    nm: ANIMATIONS[animKey].label,
+    ddd: 0, assets: [],
+    fonts: {
+      list: [{
+        fName: font.fName, fFamily: font.fFamily, fStyle: font.fStyle,
+        fPath: '', fWeight: '', fClass: '', fSearchable: '',
+        fData: {}, fOrigin: 0, origin: 0, ascent: 75
+      }]
     },
-    svg:svgStr
-  },null,2)],{type:'application/json'});
-  dlBlob(blob,`ascii-${animKey}.json`);
+    layers
+  };
+
+  dlBlob(
+    new Blob([JSON.stringify(lottie)], {type: 'application/json'}),
+    `ascii-${animKey}.json`
+  );
 }
 
 // Render static SVG previews into thumbnail <img> elements
@@ -1894,8 +2013,8 @@ document.getElementById('animColorPicker').addEventListener('input',e=>{
   state.animColor=e.target.value;
 });
 
-// Export animation JSON
-document.getElementById('exportAnimJson').addEventListener('click', exportAnimJSON);
+// Export Lottie JSON
+document.getElementById('exportAnimJson').addEventListener('click', exportAnimLottie);
 
 // Image library
 document.querySelectorAll('.lib-thumb').forEach(thumb=>{
