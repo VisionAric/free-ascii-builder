@@ -4,7 +4,9 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>ASCII Generator</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=optional" rel="stylesheet"/>
 <link rel="icon" type="image/svg+xml" href="logo.svg"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -116,8 +118,11 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
 .lib-anim-thumb .anim-preview-img{width:100%;aspect-ratio:1.6;display:block;background:#000;object-fit:cover}
 .lib-anim-thumb span{font-size:9px;font-weight:700;color:var(--t3);padding:5px 8px;letter-spacing:.08em;text-transform:uppercase;transition:color .12s}
 .lib-anim-thumb.active span,.lib-anim-thumb:hover span{color:var(--t2)}
-/* Anim SVG overlay */
-#animSvg{position:absolute;inset:0;display:none;pointer-events:none;width:100%;height:100%;overflow:hidden}
+/* Anim canvas overlay */
+#animCanvas{position:absolute;inset:0;display:none;pointer-events:none}
+/* Compositing hints */
+#svgWrapper{will-change:transform}
+.svg-container{contain:layout style}
 
 /* Controls */
 .ctrl{display:flex;flex-direction:column;gap:7px}
@@ -325,25 +330,25 @@ input[type=range]::-webkit-slider-runnable-track{
       <!-- Images panel -->
       <div class="lib-grid" id="libImgGrid">
         <div class="lib-thumb active" data-src="lib-checkered-flag.png" data-label="Checkered Flag" title="Checkered Flag">
-          <img src="lib-checkered-flag.png" alt="Checkered Flag"/>
+          <img src="lib-checkered-flag.png" alt="Checkered Flag" loading="lazy"/>
         </div>
         <div class="lib-thumb" data-src="lib-peace-glove.png" data-label="Peace Glove" title="Peace Glove">
-          <img src="lib-peace-glove.png" alt="Peace Glove"/>
+          <img src="lib-peace-glove.png" alt="Peace Glove" loading="lazy"/>
         </div>
         <div class="lib-thumb" data-src="lib-shaka-glove.png" data-label="Shaka Glove" title="Shaka Glove">
-          <img src="lib-shaka-glove.png" alt="Shaka Glove"/>
+          <img src="lib-shaka-glove.png" alt="Shaka Glove" loading="lazy"/>
         </div>
         <div class="lib-thumb" data-src="lib-dice.png" data-label="Dice" title="Dice">
-          <img src="lib-dice.png" alt="Dice"/>
+          <img src="lib-dice.png" alt="Dice" loading="lazy"/>
         </div>
         <div class="lib-thumb" data-src="lib-money.png" data-label="Money Roll" title="Money Roll">
-          <img src="lib-money.png" alt="Money Roll"/>
+          <img src="lib-money.png" alt="Money Roll" loading="lazy"/>
         </div>
         <div class="lib-thumb" data-src="lib-chess-knight.png" data-label="Chess Knight" title="Chess Knight">
-          <img src="lib-chess-knight.png" alt="Chess Knight"/>
+          <img src="lib-chess-knight.png" alt="Chess Knight" loading="lazy"/>
         </div>
         <div class="lib-thumb" data-src="lib-fire-panther.png" data-label="Fire Panther" title="Fire Panther">
-          <img src="lib-fire-panther.png" alt="Fire Panther"/>
+          <img src="lib-fire-panther.png" alt="Fire Panther" loading="lazy"/>
         </div>
       </div>
       <!-- Animations panel -->
@@ -389,7 +394,7 @@ input[type=range]::-webkit-slider-runnable-track{
           <div class="ctrl-label">Size</div>
           <div class="ctrl-val" id="colsVal">120</div>
         </div>
-        <input type="range" id="cols" min="20" max="300" value="120"/>
+        <input type="range" id="cols" min="20" max="300" value="80"/>
       </div>
       <div class="toggle-row">
         <div class="ctrl-label">Invert characters</div>
@@ -618,7 +623,7 @@ input[type=range]::-webkit-slider-runnable-track{
   <div class="output-wrap" id="outputWrap">
     <div class="parallax-badge" id="parallaxBadge"><span></span>PARALLAX ACTIVE</div>
     <div class="svg-container" id="svgContainer">
-      <svg id="animSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+      <canvas id="animCanvas"></canvas>
       <div id="svgWrapper">
         <svg id="asciiSvg" xmlns="http://www.w3.org/2000/svg"></svg>
       </div>
@@ -661,11 +666,11 @@ const CHARSETS = {
 };
 
 const PRESETS = {
-  standard: { colorMode:'color',   bgColor:'#000000', fgColor:'#ffffff', fontSize:10, cols:120, lineHeight:120, invertChars:false, charset:'standard' },
-  matrix:   { colorMode:'mono',    bgColor:'#000000', fgColor:'#00ff41', fontSize:10, cols:100, lineHeight:120, invertChars:false, charset:'simple'   },
-  blueprint:{ colorMode:'mono',    bgColor:'#0a1628', fgColor:'#4f8ef7', fontSize:9,  cols:130, lineHeight:115, invertChars:false, charset:'standard'  },
-  neon:     { colorMode:'hue',     bgColor:'#080010', fgColor:'#ff00ff', fontSize:11, cols:90,  lineHeight:125, invertChars:false, charset:'blocks'    },
-  retro:    { colorMode:'sepia',   bgColor:'#1a0e00', fgColor:'#d4a850', fontSize:10, cols:100, lineHeight:118, invertChars:false, charset:'standard'  },
+  standard: { colorMode:'color',   bgColor:'#000000', fgColor:'#ffffff', fontSize:10, cols:80,  lineHeight:120, invertChars:false, charset:'standard' },
+  matrix:   { colorMode:'mono',    bgColor:'#000000', fgColor:'#00ff41', fontSize:10, cols:80,  lineHeight:120, invertChars:false, charset:'simple'   },
+  blueprint:{ colorMode:'mono',    bgColor:'#0a1628', fgColor:'#4f8ef7', fontSize:9,  cols:90,  lineHeight:115, invertChars:false, charset:'standard'  },
+  neon:     { colorMode:'hue',     bgColor:'#080010', fgColor:'#ff00ff', fontSize:11, cols:70,  lineHeight:125, invertChars:false, charset:'blocks'    },
+  retro:    { colorMode:'sepia',   bgColor:'#1a0e00', fgColor:'#d4a850', fontSize:10, cols:80,  lineHeight:118, invertChars:false, charset:'standard'  },
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -679,7 +684,7 @@ let state = {
   // char
   charset: 'standard',
   customChars: ` .:-=+*#%@$`,
-  cols: 120,
+  cols: 80,
   invertChars: false,
   edgeDetect: false,
   dithering: false,
@@ -1155,9 +1160,10 @@ function animateParallax() {
 //  RENDER PIPELINE
 // ═══════════════════════════════════════════════════════════════
 function scheduleRender() {
+  if(animKey) return; // animation is active — skip ASCII re-render
   clearTimeout(renderDebounce);
   processing.classList.add('visible');
-  renderDebounce = setTimeout(doRender, 80);
+  renderDebounce = setTimeout(doRender, 200);
 }
 
 function doRender() {
@@ -1538,7 +1544,7 @@ document.getElementById('copySvg').addEventListener('click',copySVG);
 // ═══════════════════════════════════════════════════════════════
 //  ANIMATION LIBRARY  (SVG DOM — crisp at any DPR)
 // ═══════════════════════════════════════════════════════════════
-const animSvg = document.getElementById('animSvg');
+const animCanvas = document.getElementById('animCanvas');
 let animRaf = null, animKey = null, animStateObj = null, animPrevT = 0;
 
 // Preset → animation foreground color
@@ -1579,7 +1585,8 @@ const ANIMATIONS = {
   'symbol-tide': {
     label:'Symbol Tide',
     createState(w,h){
-      const sz=13, chars=getAnimSymbols(state.charset);
+      // sz=16: fewer cells = much less work per frame on low-end hardware
+      const sz=16, chars=getAnimSymbols(state.charset);
       const cols=Math.ceil(w/sz), rows=Math.ceil(h/sz);
       return {
         sz,w,h,cols,rows,chars,
@@ -1590,40 +1597,10 @@ const ANIMATIONS = {
             base:0.04+Math.random()*0.25,
             speed:0.006+Math.random()*0.014,
             changeAt:Math.random()*3000,
-            displayAlpha:0, bright:false
+            displayAlpha:0
           }))
-        ),
-        elems:null, gEl:null
+        )
       };
-    },
-    initSVG(svg,s){
-      const {sz,cols,rows}=s;
-      svg.innerHTML=`<defs>
-        <filter id="anim-glow" x="-60%" y="-60%" width="220%" height="220%">
-          <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur"/>
-          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-      </defs>`;
-      const g=document.createElementNS('http://www.w3.org/2000/svg','g');
-      g.setAttribute('font-family',state.fontFamily||"'Courier New',monospace");
-      g.setAttribute('font-size',sz-1);
-      g.setAttribute('fill',state.animColor||'#ffffff');
-      const elems=[];
-      for(let r=0;r<rows;r++){
-        const row=[];
-        for(let c=0;c<cols;c++){
-          const t=document.createElementNS('http://www.w3.org/2000/svg','text');
-          t.setAttribute('x',c*sz);
-          t.setAttribute('y',r*sz+sz);
-          t.setAttribute('opacity','0');
-          t.textContent=s.grid[r][c].char;
-          g.appendChild(t);
-          row.push(t);
-        }
-        elems.push(row);
-      }
-      svg.appendChild(g);
-      s.elems=elems; s.gEl=g;
     },
     stepPhysics(s,dt,t){
       const {grid,chars,w,h,sz}=s;
@@ -1643,32 +1620,24 @@ const ANIMATIONS = {
         const b1=Math.max(0,1-(d1*d1)/(w*w*0.018))*0.75;
         const b2=Math.max(0,1-(d2*d2)/(w*w*0.03))*0.45;
         cell.displayAlpha=Math.min(1,cell.alpha+b1+b2);
-        cell.bright=cell.displayAlpha>0.82;
       }
     },
-    syncSVG(s){
-      const {grid,elems,sz,gEl}=s;
-      if(!elems) return;
-      gEl.setAttribute('fill',state.animColor||'#ffffff');
-      gEl.setAttribute('font-family',state.fontFamily||"'Courier New',monospace");
+    // Canvas-based render: globalAlpha + one fillStyle per frame = fast
+    drawFrame(ctx,s,dt,t){
+      this.stepPhysics(s,dt,t);
+      const {sz,grid,w,h}=s;
+      ctx.clearRect(0,0,w,h);
+      ctx.fillStyle=state.animColor||'#ffffff';
+      ctx.textBaseline='top';
+      ctx.font=`${sz-2}px ${state.fontFamily||"'Courier New',monospace"}`;
       for(let r=0;r<grid.length;r++) for(let c=0;c<grid[r].length;c++){
-        const cell=grid[r][c],el=elems[r][c];
-        const a=cell.displayAlpha;
-        if(a<0.025){el.setAttribute('opacity','0');continue;}
-        el.setAttribute('opacity',a.toFixed(3));
-        el.textContent=cell.char;
-        if(cell.bright){
-          el.setAttribute('font-size',sz+1);
-          el.setAttribute('font-weight','bold');
-          el.setAttribute('filter','url(#anim-glow)');
-        } else {
-          el.setAttribute('font-size',sz-1);
-          el.removeAttribute('font-weight');
-          el.removeAttribute('filter');
-        }
+        const a=grid[r][c].displayAlpha;
+        if(a<0.025) continue;
+        ctx.globalAlpha=a;
+        ctx.fillText(grid[r][c].char,c*sz,r*sz);
       }
+      ctx.globalAlpha=1;
     },
-    drawFrame(s,dt,t){this.stepPhysics(s,dt,t);this.syncSVG(s);},
     toSVGString(s){
       const {sz,grid,w,h}=s;
       const color=state.animColor||'#ffffff';
@@ -1680,7 +1649,7 @@ const ANIMATIONS = {
         const ch=cell.char.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
         out+=`<text x="${c*sz}" y="${r*sz+sz}" opacity="${a.toFixed(3)}">${ch}</text>`;
       }
-      return `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" style="font-family:${ff};font-size:${sz-1}px;fill:${color}">${out}</svg>`;
+      return `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" style="font-family:${ff};font-size:${sz-2}px;fill:${color}">${out}</svg>`;
     },
     staticPreviewSVG(pw,ph){
       const s=this.createState(pw,ph);
@@ -1694,44 +1663,17 @@ const ANIMATIONS = {
   'noise-field': {
     label:'Noise Field',
     createState(w,h){
-      const sz=14, chars=getAnimGradient(state.charset);
-      return {sz,w,h,chars,cols:Math.ceil(w/sz),rows:Math.ceil(h/sz),t:0,elems:null,gEl:null};
-    },
-    initSVG(svg,s){
-      const {sz,cols,rows}=s;
-      svg.innerHTML=`<defs>
-        <filter id="anim-glow" x="-60%" y="-60%" width="220%" height="220%">
-          <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur"/>
-          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-      </defs>`;
-      const g=document.createElementNS('http://www.w3.org/2000/svg','g');
-      g.setAttribute('font-family',state.fontFamily||"'Courier New',monospace");
-      g.setAttribute('font-size',sz);
-      g.setAttribute('fill',state.animColor||'#ffffff');
-      const elems=[];
-      for(let r=0;r<rows;r++){
-        const row=[];
-        for(let c=0;c<cols;c++){
-          const t=document.createElementNS('http://www.w3.org/2000/svg','text');
-          t.setAttribute('x',c*sz);
-          t.setAttribute('y',r*sz+sz);
-          t.setAttribute('opacity','0');
-          t.textContent='.';
-          g.appendChild(t);
-          row.push(t);
-        }
-        elems.push(row);
-      }
-      svg.appendChild(g);
-      s.elems=elems; s.gEl=g;
+      const sz=16, chars=getAnimGradient(state.charset);
+      return {sz,w,h,chars,cols:Math.ceil(w/sz),rows:Math.ceil(h/sz),t:0};
     },
     stepPhysics(s,dt){s.t+=dt*0.00055;},
-    syncSVG(s){
-      const {sz,chars,cols,rows,t:T,elems,gEl}=s;
-      if(!elems) return;
-      gEl.setAttribute('fill',state.animColor||'#ffffff');
-      gEl.setAttribute('font-family',state.fontFamily||"'Courier New',monospace");
+    drawFrame(ctx,s,dt){
+      this.stepPhysics(s,dt);
+      const {sz,chars,cols,rows,w,h,t:T}=s;
+      ctx.clearRect(0,0,w,h);
+      ctx.fillStyle=state.animColor||'#ffffff';
+      ctx.textBaseline='top';
+      ctx.font=`${sz}px ${state.fontFamily||"'Courier New',monospace"}`;
       for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
         const nx=c/cols,ny=r/rows;
         const v=(
@@ -1741,21 +1683,12 @@ const ANIMATIONS = {
           Math.cos(nx*2.4-ny*4.8+T*0.4)*0.1+0.5);
         const cl=Math.max(0,Math.min(1,v));
         const idx=Math.floor(cl*(chars.length-1));
-        const el=elems[r][c];
-        if(idx<1){el.setAttribute('opacity','0');continue;}
-        const alpha=0.1+cl*0.85;
-        el.setAttribute('opacity',alpha.toFixed(3));
-        el.textContent=chars[idx];
-        if(cl>0.78){
-          el.setAttribute('font-weight','bold');
-          el.setAttribute('filter','url(#anim-glow)');
-        } else {
-          el.removeAttribute('font-weight');
-          el.removeAttribute('filter');
-        }
+        if(idx<1) continue;
+        ctx.globalAlpha=0.1+cl*0.85;
+        ctx.fillText(chars[idx],c*sz,r*sz);
       }
+      ctx.globalAlpha=1;
     },
-    drawFrame(s,dt){this.stepPhysics(s,dt);this.syncSVG(s);},
     toSVGString(s){
       const {sz,chars,cols,rows,w,h,t:T}=s;
       const color=state.animColor||'#ffffff';
@@ -1767,8 +1700,7 @@ const ANIMATIONS = {
         const cl=Math.max(0,Math.min(1,v));
         const idx=Math.floor(cl*(chars.length-1));
         if(idx<1) continue;
-        const alpha=0.1+cl*0.85;
-        out+=`<text x="${c*sz}" y="${r*sz+sz}" opacity="${alpha.toFixed(3)}">${chars[idx]}</text>`;
+        out+=`<text x="${c*sz}" y="${r*sz+sz}" opacity="${(0.1+cl*0.85).toFixed(3)}">${chars[idx]}</text>`;
       }
       return `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" style="font-family:${ff};font-size:${sz}px;fill:${color}">${out}</svg>`;
     },
@@ -1786,17 +1718,26 @@ function startAnimation(key){
   animKey=key;
   const anim=ANIMATIONS[key];
   const W=svgContainer.clientWidth, H=svgContainer.clientHeight;
+  // DPR-corrected canvas: crisp on Retina, capped at 2× to limit memory use
+  const dpr=Math.min(window.devicePixelRatio||1, 2);
+  animCanvas.width=W*dpr; animCanvas.height=H*dpr;
+  animCanvas.style.width=W+'px'; animCanvas.style.height=H+'px';
+  const ctx=animCanvas.getContext('2d');
+  ctx.scale(dpr,dpr);
   animStateObj=anim.createState(W,H);
-  anim.initSVG(animSvg,animStateObj);
   svgWrapper.style.display='none';
-  animSvg.style.display='block';
+  animCanvas.style.display='block';
   document.getElementById('outputWrap').classList.add('visible');
   document.getElementById('statusText').textContent=anim.label+' — Animation';
   animPrevT=0;
+  let lastDrawT=0;
+  const TARGET_MS=1000/24; // cap at 24 fps — 60% less CPU vs 60fps
   function loop(t){
-    const dt=animPrevT?Math.min(t-animPrevT,100):16; animPrevT=t;
-    anim.drawFrame(animStateObj,dt,t);
     animRaf=requestAnimationFrame(loop);
+    if(t-lastDrawT<TARGET_MS) return;
+    const dt=animPrevT?Math.min(t-animPrevT,100):16;
+    animPrevT=t; lastDrawT=t;
+    anim.drawFrame(ctx,animStateObj,dt,t);
   }
   animRaf=requestAnimationFrame(loop);
 }
@@ -1804,8 +1745,7 @@ function startAnimation(key){
 function stopAnimation(){
   if(animRaf){cancelAnimationFrame(animRaf);animRaf=null;}
   animKey=null; animStateObj=null;
-  animSvg.style.display='none';
-  animSvg.innerHTML='';
+  animCanvas.style.display='none';
   svgWrapper.style.display='';
   const btn=document.getElementById('exportAnimJson');
   if(btn){btn.style.opacity='0.4';btn.style.pointerEvents='none';}
