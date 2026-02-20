@@ -1794,9 +1794,10 @@ function exportAnimLottie() {
     }
 
     // Capture as base64 PNG (ASCII art compresses very well)
+    // e:1 = embedded; lottie-web expects the full data URI in p, not just base64
     const id = `img_${f}`;
-    const b64 = offCanvas.toDataURL('image/png').split(',')[1];
-    assets.push({id, w: exportW, h: exportH, u: '', p: b64, e: 1});
+    const dataUrl = offCanvas.toDataURL('image/png');
+    assets.push({id, w: exportW, h: exportH, u: '', p: dataUrl, e: 1});
 
     // Each image layer is visible for exactly 1 frame → slideshow loop
     layers.push({

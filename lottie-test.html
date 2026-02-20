@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Lottie Export Test</title>
+<style>
+  body{margin:0;background:#111;display:flex;flex-direction:column;align-items:center;padding:24px;font-family:monospace;color:#fff;gap:16px}
+  h2{margin:0}
+  #drop{width:360px;height:260px;border:2px dashed #555;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#888;font-size:14px;text-align:center;padding:12px;box-sizing:border-box}
+  #drop.over{border-color:#0f0;color:#0f0}
+  #player{width:360px;height:260px;background:#000;border-radius:8px;display:none}
+  #status{font-size:13px;color:#888}
+  input[type=file]{display:none}
+</style>
+</head>
+<body>
+<h2>Lottie JSON Tester</h2>
+<div id="drop">Drop the downloaded<br><b>ascii-*.json</b> here<br><br>or click to browse</div>
+<div id="player"></div>
+<div id="status">Waiting for file…</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
+<script>
+const drop = document.getElementById('drop');
+const player = document.getElementById('player');
+const status = document.getElementById('status');
+let anim = null;
+
+function loadJSON(json) {
+  try {
+    const data = JSON.parse(json);
+    status.textContent = `Loaded: ${data.nm || 'untitled'} — ${data.layers?.length} layers, ${data.assets?.length} assets, ${data.fr}fps, ${data.op} frames`;
+    drop.style.display = 'none';
+    player.style.display = 'block';
+    if (anim) anim.destroy();
+    anim = lottie.loadAnimation({
+      container: player,
+      renderer: 'canvas',
+      loop: true,
+      autoplay: true,
+      animationData: data
+    });
+    anim.addEventListener('error', e => { status.textContent = 'Lottie error: ' + JSON.stringify(e); });
+  } catch(e) {
+    status.textContent = 'JSON parse error: ' + e.message;
+  }
+}
+
+drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+drop.addEventListener('drop', e => {
+  e.preventDefault(); drop.classList.remove('over');
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => loadJSON(ev.target.result);
+  reader.readAsText(file);
+});
+drop.addEventListener('click', () => {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = '.json,application/json';
+  inp.onchange = e => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => loadJSON(ev.target.result);
+    reader.readAsText(file);
+  };
+  inp.click();
+});
+</script>
+</body>
+</html>
