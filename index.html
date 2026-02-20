@@ -278,6 +278,35 @@ input[type=range]::-webkit-slider-runnable-track{
 /* Hidden inputs */
 #fileInput{display:none}
 #sampleCanvas{display:none}
+
+/* ── Mode Switch ──────────────────────────────────────────── */
+.mode-switch{display:flex;align-items:center;gap:2px;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:2px;flex-shrink:0}
+.mode-btn{padding:4px 13px;border-radius:6px;font-size:10.5px;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--t2);transition:all .15s;font-family:inherit;letter-spacing:.04em}
+.mode-btn.active{background:#fff;color:#000}
+
+/* ASCII things hidden in dither mode */
+body.dither-mode #asciiPresets{display:none}
+body.dither-mode .ascii-sidebar{display:none}
+body.dither-mode #asciiExportGroup{display:none}
+
+/* Dither sidebar + export visible only in dither mode */
+.dither-sidebar{display:none;flex-direction:column}
+body.dither-mode .dither-sidebar{display:flex}
+#ditherExportGroup{display:none}
+body.dither-mode #ditherExportGroup{display:flex}
+
+/* Dither output canvas */
+#ditherCanvas{position:absolute;inset:0;display:none;pointer-events:none;image-rendering:pixelated}
+#ditherCanvas.active{display:block}
+
+/* Algorithm picker grid */
+.algo-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px}
+.algo-pill{padding:7px 4px;border-radius:5px;border:1px solid var(--border);background:transparent;font-size:9px;font-weight:600;cursor:pointer;text-align:center;color:var(--t3);transition:all .12s;font-family:inherit;letter-spacing:.02em;line-height:1.3}
+.algo-pill:hover{color:var(--t2);border-color:rgba(255,255,255,.15)}
+.algo-pill.active{border-color:rgba(255,255,255,.35);color:var(--text);background:rgba(255,255,255,.04)}
+
+/* Dither no-image nudge */
+.dither-no-img{padding:28px 16px;text-align:center;color:var(--t3);font-size:11px;line-height:1.7}
 </style>
 </head>
 <body>
@@ -290,7 +319,12 @@ input[type=range]::-webkit-slider-runnable-track{
     <div class="tb-title">ASCII<span>.</span>GENERATOR</div>
   </div>
 
-  <div class="tb-center">
+  <div class="mode-switch">
+    <button class="mode-btn active" id="modeAscii">ASCII</button>
+    <button class="mode-btn" id="modeDither">Dither</button>
+  </div>
+
+  <div class="tb-center" id="asciiPresets">
     <button class="preset-btn active" data-preset="standard">Standard</button>
     <button class="preset-btn" data-preset="matrix">Matrix</button>
     <button class="preset-btn" data-preset="blueprint">Blueprint</button>
@@ -301,11 +335,15 @@ input[type=range]::-webkit-slider-runnable-track{
   <div class="tb-right">
     <div class="tb-status" id="statusText">No image loaded</div>
     <div class="tb-divider"></div>
-    <div class="export-group">
+    <div class="export-group" id="asciiExportGroup">
       <button class="exp-btn" id="exportSvg">SVG</button>
       <button class="exp-btn" id="exportPng">PNG</button>
       <button class="exp-btn" id="exportTxt">TXT</button>
       <button class="exp-btn" id="copySvg">Copy</button>
+    </div>
+    <div class="export-group" id="ditherExportGroup">
+      <button class="exp-btn" id="ditherExportPng">PNG</button>
+      <button class="exp-btn" id="ditherExportSvg">SVG</button>
     </div>
     <button class="upload-btn" id="uploadBtn">↑ Upload</button>
     <input type="file" id="fileInput" accept="image/*"/>
@@ -317,6 +355,7 @@ input[type=range]::-webkit-slider-runnable-track{
 <!-- ── SIDEBAR ──────────────────────────────────────────────── -->
 <aside class="sidebar">
 
+<div class="ascii-sidebar">
   <!-- IMAGE LIBRARY -->
   <div class="section">
     <div class="section-hdr open" data-section="library">
@@ -597,6 +636,92 @@ input[type=range]::-webkit-slider-runnable-track{
     </div>
   </div>
 
+</div><!-- /.ascii-sidebar -->
+
+<!-- ── DITHER SIDEBAR ──────────────────────────────────────── -->
+<div class="dither-sidebar">
+
+  <!-- No image yet -->
+  <div class="dither-no-img" id="ditherNoImg">
+    Upload a photo to start dithering
+    <br>
+    <button class="upload-btn" id="ditherUploadBtn" style="margin-top:12px;font-size:10px">↑ Upload Image</button>
+  </div>
+
+  <!-- Algorithm -->
+  <div class="section">
+    <div class="section-hdr open" data-section="dither-algo">
+      Algorithm <span class="arrow">▾</span>
+    </div>
+    <div class="section-body" id="body-dither-algo">
+      <div class="algo-grid">
+        <button class="algo-pill active" data-algo="floyd">Floyd–<br>Steinberg</button>
+        <button class="algo-pill" data-algo="atkinson">Atkinson</button>
+        <button class="algo-pill" data-algo="stucki">Stucki</button>
+        <button class="algo-pill" data-algo="sierra">Sierra</button>
+        <button class="algo-pill" data-algo="bayer4">Bayer<br>4×4</button>
+        <button class="algo-pill" data-algo="bayer8">Bayer<br>8×8</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Adjustments -->
+  <div class="section">
+    <div class="section-hdr open" data-section="dither-adj">
+      Adjustments <span class="arrow">▾</span>
+    </div>
+    <div class="section-body" id="body-dither-adj">
+      <div class="ctrl">
+        <div class="ctrl-row">
+          <div class="ctrl-label">Dot size</div>
+          <div class="ctrl-val" id="dsizeVal">2px</div>
+        </div>
+        <input type="range" id="dsize" min="1" max="12" value="2" step="1"/>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-row">
+          <div class="ctrl-label">Threshold</div>
+          <div class="ctrl-val" id="dthreshVal">0</div>
+        </div>
+        <input type="range" id="dthresh" min="-100" max="100" value="0"/>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-row">
+          <div class="ctrl-label">Contrast</div>
+          <div class="ctrl-val" id="dcontrastVal">0</div>
+        </div>
+        <input type="range" id="dcontrast" min="-100" max="100" value="0"/>
+      </div>
+      <div class="toggle-row">
+        <div class="ctrl-label">Invert</div>
+        <button class="toggle" id="dinvert"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Colors -->
+  <div class="section">
+    <div class="section-hdr open" data-section="dither-colors">
+      Colors <span class="arrow">▾</span>
+    </div>
+    <div class="section-body" id="body-dither-colors">
+      <div class="color-row">
+        <div class="color-swatch" style="background:#1a1a1a">
+          <input type="color" id="dfg" value="#1a1a1a"/>
+        </div>
+        <div class="color-label">Dot color</div>
+      </div>
+      <div class="color-row">
+        <div class="color-swatch" style="background:#b8c4e0">
+          <input type="color" id="dbg" value="#b8c4e0"/>
+        </div>
+        <div class="color-label">Background</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /.dither-sidebar -->
+
 </aside>
 
 <!-- ── PREVIEW ───────────────────────────────────────────────── -->
@@ -624,6 +749,7 @@ input[type=range]::-webkit-slider-runnable-track{
     <div class="parallax-badge" id="parallaxBadge"><span></span>PARALLAX ACTIVE</div>
     <div class="svg-container" id="svgContainer">
       <canvas id="animCanvas"></canvas>
+      <canvas id="ditherCanvas"></canvas>
       <div id="svgWrapper">
         <svg id="asciiSvg" xmlns="http://www.w3.org/2000/svg"></svg>
       </div>
@@ -759,7 +885,12 @@ function loadImageUrl(url, name='image') {
     state.imageLoaded = true;
     document.getElementById('infoFile').textContent = name;
     showOutput();
-    scheduleRender();
+    if (appMode === 'dither') {
+      document.getElementById('ditherNoImg').style.display = 'none';
+      scheduleDither();
+    } else {
+      scheduleRender();
+    }
     URL.revokeObjectURL(url);
   };
   img.src = url;
@@ -1160,7 +1291,8 @@ function animateParallax() {
 //  RENDER PIPELINE
 // ═══════════════════════════════════════════════════════════════
 function scheduleRender() {
-  if(animKey) return; // animation is active — skip ASCII re-render
+  if(animKey) return;           // animation active — skip
+  if(appMode === 'dither') return; // dither mode active — skip
   clearTimeout(renderDebounce);
   processing.classList.add('visible');
   renderDebounce = setTimeout(doRender, 200);
@@ -1909,6 +2041,280 @@ document.querySelectorAll('.section-hdr').forEach(hdr=>{
     body.classList.toggle('hidden');
   });
 });
+
+// ═══════════════════════════════════════════════════════════════
+//  MODE SWITCHING (ASCII ↔ DITHER)
+// ═══════════════════════════════════════════════════════════════
+let appMode = 'ascii';
+
+function switchMode(mode) {
+  appMode = mode;
+  document.body.classList.toggle('dither-mode', mode === 'dither');
+  document.getElementById('modeAscii').classList.toggle('active', mode === 'ascii');
+  document.getElementById('modeDither').classList.toggle('active', mode === 'dither');
+  if (mode === 'dither') {
+    const noImg = document.getElementById('ditherNoImg');
+    if (state.imageLoaded) { noImg.style.display = 'none'; scheduleDither(); }
+    else { noImg.style.display = 'block'; }
+  } else {
+    document.getElementById('ditherCanvas').classList.remove('active');
+    if (state.imageLoaded) scheduleRender();
+  }
+}
+
+document.getElementById('modeAscii').addEventListener('click', () => switchMode('ascii'));
+document.getElementById('modeDither').addEventListener('click', () => switchMode('dither'));
+document.getElementById('ditherUploadBtn').addEventListener('click', () => document.getElementById('fileInput').click());
+
+// ═══════════════════════════════════════════════════════════════
+//  DITHER STATE
+// ═══════════════════════════════════════════════════════════════
+const ditherState = {
+  algo: 'floyd',
+  dotSize: 2,
+  threshold: 0,   // bias ±100 around midpoint 128
+  contrast: 0,    // ±100
+  invert: false,
+  fg: '#1a1a1a',
+  bg: '#b8c4e0'
+};
+
+let ditherDebounce = null;
+function scheduleDither() {
+  clearTimeout(ditherDebounce);
+  ditherDebounce = setTimeout(runDither, 100);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  DITHER ALGORITHMS
+// ═══════════════════════════════════════════════════════════════
+const BAYER4 = [
+  [ 0,  8,  2, 10],
+  [12,  4, 14,  6],
+  [ 3, 11,  1,  9],
+  [15,  7, 13,  5]
+];
+const BAYER8 = [
+  [ 0, 32,  8, 40,  2, 34, 10, 42],
+  [48, 16, 56, 24, 50, 18, 58, 26],
+  [12, 44,  4, 36, 14, 46,  6, 38],
+  [60, 28, 52, 20, 62, 30, 54, 22],
+  [ 3, 35, 11, 43,  1, 33,  9, 41],
+  [51, 19, 59, 27, 49, 17, 57, 25],
+  [15, 47,  7, 39, 13, 45,  5, 37],
+  [63, 31, 55, 23, 61, 29, 53, 21]
+];
+
+function dclamp(v) { return v < 0 ? 0 : v > 255 ? 255 : v; }
+
+function errorDiffuse(gray, w, h, thr, spread) {
+  const d = new Float32Array(gray);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = y * w + x;
+      const old = dclamp(d[i]);
+      const nw = old < thr ? 0 : 255;
+      d[i] = nw;
+      const err = old - nw;
+      for (const [dx, dy, wt] of spread) {
+        const nx = x + dx, ny = y + dy;
+        if (nx >= 0 && nx < w && ny >= 0 && ny < h) d[ny * w + nx] += err * wt;
+      }
+    }
+  }
+  return d;
+}
+
+const DITHER_ALGOS = {
+  floyd:    (g,w,h,t) => errorDiffuse(g,w,h,t,[
+    [1,0,7/16],[-1,1,3/16],[0,1,5/16],[1,1,1/16]]),
+  atkinson: (g,w,h,t) => errorDiffuse(g,w,h,t,[
+    [1,0,1/8],[2,0,1/8],[-1,1,1/8],[0,1,1/8],[1,1,1/8],[0,2,1/8]]),
+  stucki:   (g,w,h,t) => errorDiffuse(g,w,h,t,[
+    [1,0,8/42],[2,0,4/42],
+    [-2,1,2/42],[-1,1,4/42],[0,1,8/42],[1,1,4/42],[2,1,2/42],
+    [-2,2,1/42],[-1,2,2/42],[0,2,4/42],[1,2,2/42],[2,2,1/42]]),
+  sierra:   (g,w,h,t) => errorDiffuse(g,w,h,t,[
+    [1,0,5/32],[2,0,3/32],
+    [-2,1,2/32],[-1,1,4/32],[0,1,5/32],[1,1,4/32],[2,1,2/32],
+    [-1,2,2/32],[0,2,3/32],[1,2,2/32]]),
+  bayer4: (g,w,h,t) => {
+    const o = new Float32Array(w*h);
+    for (let y=0;y<h;y++) for (let x=0;x<w;x++) {
+      const b = (BAYER4[y%4][x%4]/16 - 0.5)*85;
+      o[y*w+x] = dclamp(g[y*w+x]+b) < t ? 0 : 255;
+    }
+    return o;
+  },
+  bayer8: (g,w,h,t) => {
+    const o = new Float32Array(w*h);
+    for (let y=0;y<h;y++) for (let x=0;x<w;x++) {
+      const b = (BAYER8[y%8][x%8]/64 - 0.5)*85;
+      o[y*w+x] = dclamp(g[y*w+x]+b) < t ? 0 : 255;
+    }
+    return o;
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  DITHER RENDER
+// ═══════════════════════════════════════════════════════════════
+function runDither() {
+  if (!state.imageLoaded || appMode !== 'dither') return;
+  const img = state.imageEl;
+  const container = document.getElementById('svgContainer');
+  const cw = container.clientWidth, ch = container.clientHeight;
+  const ds = Math.max(1, ditherState.dotSize);
+
+  // Fit image aspect ratio in container
+  const imgAR = img.naturalWidth / img.naturalHeight;
+  const conAR = cw / ch;
+  let drawW, drawH;
+  if (imgAR > conAR) { drawW = cw; drawH = Math.round(cw / imgAR); }
+  else               { drawH = ch; drawW = Math.round(ch * imgAR); }
+
+  // Working resolution: one cell per dot
+  const workW = Math.max(1, Math.floor(drawW / ds));
+  const workH = Math.max(1, Math.floor(drawH / ds));
+
+  // Sample image at low resolution
+  const tmp = document.createElement('canvas');
+  tmp.width = workW; tmp.height = workH;
+  const tctx = tmp.getContext('2d');
+  tctx.drawImage(img, 0, 0, workW, workH);
+  const px = tctx.getImageData(0, 0, workW, workH).data;
+
+  // Grayscale + contrast adjustment
+  const cf = ditherState.contrast !== 0
+    ? (259 * (ditherState.contrast + 255)) / (255 * (259 - ditherState.contrast))
+    : 1;
+  const gray = new Float32Array(workW * workH);
+  for (let i = 0; i < workW * workH; i++) {
+    let lum = 0.299 * px[i*4] + 0.587 * px[i*4+1] + 0.114 * px[i*4+2];
+    if (cf !== 1) lum = dclamp(cf * (lum - 128) + 128);
+    gray[i] = ditherState.invert ? 255 - lum : lum;
+  }
+
+  // Run algorithm
+  const thr = 128 + ditherState.threshold;
+  const fn = DITHER_ALGOS[ditherState.algo] || DITHER_ALGOS.floyd;
+  const dithered = fn(gray, workW, workH, thr);
+
+  // Paint output canvas
+  const outC = document.getElementById('ditherCanvas');
+  outC.width = cw; outC.height = ch;
+  const ctx = outC.getContext('2d');
+  const [bgR,bgG,bgB] = hexToRgb(ditherState.bg);
+  const [fgR,fgG,fgB] = hexToRgb(ditherState.fg);
+
+  // Background fill
+  ctx.fillStyle = ditherState.bg;
+  ctx.fillRect(0, 0, cw, ch);
+
+  // Center the dithered block
+  const offX = Math.floor((cw - workW * ds) / 2);
+  const offY = Math.floor((ch - workH * ds) / 2);
+
+  // Build pixel-block ImageData
+  const out = ctx.createImageData(workW * ds, workH * ds);
+  const od = out.data;
+  for (let y = 0; y < workH; y++) {
+    for (let x = 0; x < workW; x++) {
+      const dot = dithered[y * workW + x] === 0;
+      const r = dot ? fgR : bgR, g = dot ? fgG : bgG, b = dot ? fgB : bgB;
+      for (let dy = 0; dy < ds; dy++) {
+        for (let dx = 0; dx < ds; dx++) {
+          const oi = ((y*ds+dy) * (workW*ds) + (x*ds+dx)) * 4;
+          od[oi]=r; od[oi+1]=g; od[oi+2]=b; od[oi+3]=255;
+        }
+      }
+    }
+  }
+  ctx.putImageData(out, offX, offY);
+  outC.classList.add('active');
+}
+
+// ── Dither exports ───────────────────────────────────────────
+function exportDitherPng() {
+  const c = document.getElementById('ditherCanvas');
+  c.toBlob(b => dlBlob(b, 'dither.png'), 'image/png');
+}
+function exportDitherSvg() {
+  if (!state.imageLoaded || appMode !== 'dither') return;
+  const img = state.imageEl;
+  const ds = Math.max(1, ditherState.dotSize);
+  const imgAR = img.naturalWidth / img.naturalHeight;
+  // Use a fixed export size for SVG
+  const exportW = 1200, exportH = Math.round(1200 / imgAR);
+  const workW = Math.max(1, Math.floor(exportW / ds));
+  const workH = Math.max(1, Math.floor(exportH / ds));
+
+  const tmp = document.createElement('canvas');
+  tmp.width = workW; tmp.height = workH;
+  const tctx = tmp.getContext('2d');
+  tctx.drawImage(img, 0, 0, workW, workH);
+  const px = tctx.getImageData(0, 0, workW, workH).data;
+  const cf = ditherState.contrast !== 0
+    ? (259*(ditherState.contrast+255))/(255*(259-ditherState.contrast)) : 1;
+  const gray = new Float32Array(workW*workH);
+  for (let i=0;i<workW*workH;i++) {
+    let lum=0.299*px[i*4]+0.587*px[i*4+1]+0.114*px[i*4+2];
+    if(cf!==1) lum=dclamp(cf*(lum-128)+128);
+    gray[i]=ditherState.invert?255-lum:lum;
+  }
+  const thr=128+ditherState.threshold;
+  const dithered=(DITHER_ALGOS[ditherState.algo]||DITHER_ALGOS.floyd)(gray,workW,workH,thr);
+
+  let rects='';
+  for (let y=0;y<workH;y++) for (let x=0;x<workW;x++) {
+    if (dithered[y*workW+x]===0)
+      rects+=`<rect x="${x*ds}" y="${y*ds}" width="${ds}" height="${ds}"/>`;
+  }
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${exportW}" height="${exportH}" viewBox="0 0 ${exportW} ${exportH}"><rect width="${exportW}" height="${exportH}" fill="${ditherState.bg}"/><g fill="${ditherState.fg}">${rects}</g></svg>`;
+  dlBlob(new Blob([svg],{type:'image/svg+xml'}), 'dither.svg');
+}
+
+document.getElementById('ditherExportPng').addEventListener('click', exportDitherPng);
+document.getElementById('ditherExportSvg').addEventListener('click', exportDitherSvg);
+
+// ── Dither control wiring ────────────────────────────────────
+document.querySelectorAll('.algo-pill').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.algo-pill').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    ditherState.algo = btn.dataset.algo;
+    scheduleDither();
+  });
+});
+
+[
+  ['dsize',    v => { ditherState.dotSize   = +v; document.getElementById('dsizeVal').textContent   = v+'px'; }],
+  ['dthresh',  v => { ditherState.threshold = +v; document.getElementById('dthreshVal').textContent  = v; }],
+  ['dcontrast',v => { ditherState.contrast  = +v; document.getElementById('dcontrastVal').textContent= v; }],
+].forEach(([id, fn]) => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  updateSliderFill(el);
+  el.addEventListener('input', e => { fn(e.target.value); updateSliderFill(e.target); scheduleDither(); });
+});
+
+document.getElementById('dinvert').addEventListener('click', () => {
+  ditherState.invert = toggleEl('dinvert');
+  scheduleDither();
+});
+document.getElementById('dfg').addEventListener('input', e => {
+  ditherState.fg = e.target.value;
+  e.target.closest('.color-swatch').style.background = e.target.value;
+  scheduleDither();
+});
+document.getElementById('dbg').addEventListener('input', e => {
+  ditherState.bg = e.target.value;
+  e.target.closest('.color-swatch').style.background = e.target.value;
+  scheduleDither();
+});
+
+// Resize: re-render dither when window resizes
+window.addEventListener('resize', () => { if(appMode==='dither') scheduleDither(); });
 
 // ═══════════════════════════════════════════════════════════════
 //  INIT
