@@ -310,6 +310,24 @@ body.dither-mode .zoom-bar{display:none}
 
 /* Dither no-image nudge */
 .dither-no-img{padding:28px 16px;text-align:center;color:var(--t3);font-size:11px;line-height:1.7}
+
+/* Dither sub-panel tabs */
+.dither-tabs{display:flex;gap:2px;padding:8px 10px 6px;border-bottom:1px solid var(--border);flex-shrink:0}
+.dither-tab{flex:1;padding:5px 8px;border-radius:5px;font-size:9.5px;font-weight:700;cursor:pointer;border:none;background:transparent;color:var(--t3);transition:color .12s,background .12s;font-family:inherit;letter-spacing:.08em;text-transform:uppercase}
+.dither-tab:hover{color:var(--t2)}
+.dither-tab.active{background:var(--s4);color:var(--text)}
+.dither-panel{display:none;flex-direction:column;flex:1;overflow-y:auto;min-height:0}
+.dither-panel.active{display:flex}
+
+/* Cloud upload button */
+.cloud-upload-btn{
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  width:100%;padding:10px 14px;border-radius:8px;
+  background:var(--s3);border:1px dashed rgba(255,255,255,.12);
+  color:var(--t2);font-size:11px;font-weight:600;cursor:pointer;
+  font-family:inherit;transition:all .15s;
+}
+.cloud-upload-btn:hover{border-color:rgba(255,255,255,.28);color:var(--text);background:var(--s4)}
 </style>
 </head>
 <body>
@@ -644,88 +662,133 @@ body.dither-mode .zoom-bar{display:none}
 <!-- ── DITHER SIDEBAR ──────────────────────────────────────── -->
 <div class="dither-sidebar">
 
-  <!-- No image yet -->
-  <div class="dither-no-img" id="ditherNoImg">
-    Upload a photo to start dithering
-    <br>
-    <button class="upload-btn" id="ditherUploadBtn" style="margin-top:12px;font-size:10px">↑ Upload Image</button>
+  <!-- Sub-tabs: Library | Dither -->
+  <div class="dither-tabs">
+    <button class="dither-tab active" id="ditherTabLib">Library</button>
+    <button class="dither-tab" id="ditherTabCtrl">Dither</button>
   </div>
 
-  <!-- Algorithm -->
-  <div class="section">
-    <div class="section-hdr open" data-section="dither-algo">
-      Algorithm <span class="arrow">▾</span>
-    </div>
-    <div class="section-body" id="body-dither-algo">
-      <div class="algo-grid">
-        <button class="algo-pill active" data-algo="floyd">Floyd–<br>Steinberg</button>
-        <button class="algo-pill" data-algo="atkinson">Atkinson</button>
-        <button class="algo-pill" data-algo="stucki">Stucki</button>
-        <button class="algo-pill" data-algo="sierra">Sierra</button>
-        <button class="algo-pill" data-algo="bayer4">Bayer<br>4×4</button>
-        <button class="algo-pill" data-algo="bayer8">Bayer<br>8×8</button>
-      </div>
-    </div>
-  </div>
+  <!-- ── LIBRARY PANEL ─────────────────────────── -->
+  <div class="dither-panel active" id="ditherPanelLib">
 
-  <!-- Adjustments -->
-  <div class="section">
-    <div class="section-hdr open" data-section="dither-adj">
-      Adjustments <span class="arrow">▾</span>
+    <!-- Cloud upload button -->
+    <div style="padding:10px 12px 6px">
+      <button class="cloud-upload-btn" id="ditherUploadBtn">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3.5 11a3 3 0 1 1 0-6h.3A4.5 4.5 0 1 1 12 8.5h-.5"/>
+          <path d="M7.5 8v5M5.5 11l2-2 2 2"/>
+        </svg>
+        Upload Image
+      </button>
     </div>
-    <div class="section-body" id="body-dither-adj">
-      <div class="ctrl">
-        <div class="ctrl-row">
-          <div class="ctrl-label">Dot size</div>
-          <div class="ctrl-val" id="dsizeVal">3px</div>
-        </div>
-        <input type="range" id="dsize" min="1" max="12" value="3" step="1"/>
-      </div>
-      <div class="ctrl">
-        <div class="ctrl-row">
-          <div class="ctrl-label">Threshold</div>
-          <div class="ctrl-val" id="dthreshVal">0</div>
-        </div>
-        <input type="range" id="dthresh" min="-100" max="100" value="0"/>
-      </div>
-      <div class="ctrl">
-        <div class="ctrl-row">
-          <div class="ctrl-label">Contrast</div>
-          <div class="ctrl-val" id="dcontrastVal">20</div>
-        </div>
-        <input type="range" id="dcontrast" min="-100" max="100" value="20"/>
-      </div>
-      <div class="toggle-row">
-        <div class="ctrl-label">Round dots</div>
-        <button class="toggle on" id="dshape"></button>
-      </div>
-      <div class="toggle-row">
-        <div class="ctrl-label">Invert</div>
-        <button class="toggle" id="dinvert"></button>
-      </div>
-    </div>
-  </div>
 
-  <!-- Colors -->
-  <div class="section">
-    <div class="section-hdr open" data-section="dither-colors">
-      Colors <span class="arrow">▾</span>
-    </div>
-    <div class="section-body" id="body-dither-colors">
-      <div class="color-row">
-        <div class="color-swatch" style="background:#111111">
-          <input type="color" id="dfg" value="#111111"/>
-        </div>
-        <div class="color-label">Dot color</div>
+    <!-- Image grid -->
+    <div class="lib-grid" id="ditherLibGrid" style="padding-top:4px">
+      <div class="lib-thumb active" data-src="lib-checkered-flag.png" data-label="Checkered Flag" title="Checkered Flag">
+        <img src="lib-checkered-flag.png" alt="Checkered Flag" loading="lazy"/>
       </div>
-      <div class="color-row">
-        <div class="color-swatch" style="background:#c0cadf">
-          <input type="color" id="dbg" value="#c0cadf"/>
-        </div>
-        <div class="color-label">Background</div>
+      <div class="lib-thumb" data-src="lib-peace-glove.png" data-label="Peace Glove" title="Peace Glove">
+        <img src="lib-peace-glove.png" alt="Peace Glove" loading="lazy"/>
+      </div>
+      <div class="lib-thumb" data-src="lib-shaka-glove.png" data-label="Shaka Glove" title="Shaka Glove">
+        <img src="lib-shaka-glove.png" alt="Shaka Glove" loading="lazy"/>
+      </div>
+      <div class="lib-thumb" data-src="lib-dice.png" data-label="Dice" title="Dice">
+        <img src="lib-dice.png" alt="Dice" loading="lazy"/>
+      </div>
+      <div class="lib-thumb" data-src="lib-money.png" data-label="Money Roll" title="Money Roll">
+        <img src="lib-money.png" alt="Money Roll" loading="lazy"/>
+      </div>
+      <div class="lib-thumb" data-src="lib-chess-knight.png" data-label="Chess Knight" title="Chess Knight">
+        <img src="lib-chess-knight.png" alt="Chess Knight" loading="lazy"/>
+      </div>
+      <div class="lib-thumb" data-src="lib-fire-panther.png" data-label="Fire Panther" title="Fire Panther">
+        <img src="lib-fire-panther.png" alt="Fire Panther" loading="lazy"/>
       </div>
     </div>
-  </div>
+
+  </div><!-- /.ditherPanelLib -->
+
+  <!-- ── DITHER CONTROLS PANEL ─────────────────── -->
+  <div class="dither-panel" id="ditherPanelCtrl">
+
+    <!-- Algorithm -->
+    <div class="section" style="border-top:none">
+      <div class="section-hdr open" data-section="dither-algo">
+        Algorithm <span class="arrow">▾</span>
+      </div>
+      <div class="section-body" id="body-dither-algo">
+        <div class="algo-grid">
+          <button class="algo-pill active" data-algo="floyd">Floyd–<br>Steinberg</button>
+          <button class="algo-pill" data-algo="atkinson">Atkinson</button>
+          <button class="algo-pill" data-algo="stucki">Stucki</button>
+          <button class="algo-pill" data-algo="sierra">Sierra</button>
+          <button class="algo-pill" data-algo="bayer4">Bayer<br>4×4</button>
+          <button class="algo-pill" data-algo="bayer8">Bayer<br>8×8</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Adjustments -->
+    <div class="section">
+      <div class="section-hdr open" data-section="dither-adj">
+        Adjustments <span class="arrow">▾</span>
+      </div>
+      <div class="section-body" id="body-dither-adj">
+        <div class="ctrl">
+          <div class="ctrl-row">
+            <div class="ctrl-label">Dot size</div>
+            <div class="ctrl-val" id="dsizeVal">3px</div>
+          </div>
+          <input type="range" id="dsize" min="1" max="12" value="3" step="1"/>
+        </div>
+        <div class="ctrl">
+          <div class="ctrl-row">
+            <div class="ctrl-label">Threshold</div>
+            <div class="ctrl-val" id="dthreshVal">0</div>
+          </div>
+          <input type="range" id="dthresh" min="-100" max="100" value="0"/>
+        </div>
+        <div class="ctrl">
+          <div class="ctrl-row">
+            <div class="ctrl-label">Contrast</div>
+            <div class="ctrl-val" id="dcontrastVal">20</div>
+          </div>
+          <input type="range" id="dcontrast" min="-100" max="100" value="20"/>
+        </div>
+        <div class="toggle-row">
+          <div class="ctrl-label">Round dots</div>
+          <button class="toggle on" id="dshape"></button>
+        </div>
+        <div class="toggle-row">
+          <div class="ctrl-label">Invert</div>
+          <button class="toggle" id="dinvert"></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Colors -->
+    <div class="section">
+      <div class="section-hdr open" data-section="dither-colors">
+        Colors <span class="arrow">▾</span>
+      </div>
+      <div class="section-body" id="body-dither-colors">
+        <div class="color-row">
+          <div class="color-swatch" style="background:#111111">
+            <input type="color" id="dfg" value="#111111"/>
+          </div>
+          <div class="color-label">Dot color</div>
+        </div>
+        <div class="color-row">
+          <div class="color-swatch" style="background:#c0cadf">
+            <input type="color" id="dbg" value="#c0cadf"/>
+          </div>
+          <div class="color-label">Background</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /.ditherPanelCtrl -->
 
 </div><!-- /.dither-sidebar -->
 
@@ -893,7 +956,6 @@ function loadImageUrl(url, name='image') {
     document.getElementById('infoFile').textContent = name;
     showOutput();
     if (appMode === 'dither') {
-      document.getElementById('ditherNoImg').style.display = 'none';
       scheduleDither();
     } else {
       scheduleRender();
@@ -2062,13 +2124,9 @@ function switchMode(mode) {
   if (mode === 'dither') {
     // Stop any running animation
     if (animRaf) stopAnimation();
-    const noImg = document.getElementById('ditherNoImg');
     if (state.imageLoaded) {
-      noImg.style.display = 'none';
       showOutput();       // make sure outputWrap is visible
       scheduleDither();
-    } else {
-      noImg.style.display = 'block';
     }
   } else {
     // Back to ASCII: clear dither canvas, restore ASCII view
@@ -2082,7 +2140,32 @@ function switchMode(mode) {
 
 document.getElementById('modeAscii').addEventListener('click', () => switchMode('ascii'));
 document.getElementById('modeDither').addEventListener('click', () => switchMode('dither'));
+
+// Cloud upload button in dither library panel
 document.getElementById('ditherUploadBtn').addEventListener('click', () => document.getElementById('fileInput').click());
+
+// Dither sub-tabs (Library / Dither controls)
+document.getElementById('ditherTabLib').addEventListener('click', () => {
+  document.getElementById('ditherTabLib').classList.add('active');
+  document.getElementById('ditherTabCtrl').classList.remove('active');
+  document.getElementById('ditherPanelLib').classList.add('active');
+  document.getElementById('ditherPanelCtrl').classList.remove('active');
+});
+document.getElementById('ditherTabCtrl').addEventListener('click', () => {
+  document.getElementById('ditherTabCtrl').classList.add('active');
+  document.getElementById('ditherTabLib').classList.remove('active');
+  document.getElementById('ditherPanelCtrl').classList.add('active');
+  document.getElementById('ditherPanelLib').classList.remove('active');
+});
+
+// Dither library thumbnails — clicking loads the image and dithers it
+document.querySelectorAll('#ditherLibGrid .lib-thumb').forEach(thumb => {
+  thumb.addEventListener('click', () => {
+    document.querySelectorAll('#ditherLibGrid .lib-thumb').forEach(t => t.classList.remove('active'));
+    thumb.classList.add('active');
+    loadImageUrl(thumb.dataset.src, thumb.dataset.label);
+  });
+});
 
 // ═══════════════════════════════════════════════════════════════
 //  DITHER STATE
