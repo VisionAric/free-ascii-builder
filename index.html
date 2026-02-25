@@ -1820,8 +1820,16 @@ document.getElementById('colorMode').addEventListener('change',e=>{
 document.getElementById('fontFamily').addEventListener('change',e=>{ state.fontFamily=e.target.value; scheduleRender(); });
 
 // Color pickers
-document.getElementById('bgColor').addEventListener('input',e=>{ state.bgColor=e.target.value; scheduleRender(); });
-document.getElementById('fgColor').addEventListener('input',e=>{ state.fgColor=e.target.value; scheduleRender(); });
+document.getElementById('bgColor').addEventListener('input',e=>{
+  state.bgColor=e.target.value;
+  scheduleRender();
+});
+document.getElementById('fgColor').addEventListener('input',e=>{
+  state.fgColor=e.target.value;
+  state.animColor=e.target.value; // keep animation color in sync
+  const pk=document.getElementById('animColorPicker'); if(pk) pk.value=e.target.value;
+  scheduleRender();
+});
 
 // Toggles
 document.getElementById('invertChars').addEventListener('click',()=>{ state.invertChars=toggleEl('invertChars'); scheduleRender(); });
@@ -1960,10 +1968,24 @@ const ANIMATIONS = {
     },
     // Canvas-based render: globalAlpha + one fillStyle per frame = fast
     drawFrame(ctx,s,dt,t){
+      // Dynamic cell size from font size slider
+      const newSz = Math.max(8, Math.round(state.fontSize * 1.6));
+      if (newSz !== s.sz) {
+        const newCols = Math.ceil(s.w / newSz), newRows = Math.ceil(s.h / newSz);
+        while (s.grid.length < newRows)
+          s.grid.push(Array.from({length:newCols},()=>({char:s.chars[Math.floor(Math.random()*s.chars.length)],alpha:0,base:0.04+Math.random()*0.25,speed:0.006+Math.random()*0.014,changeAt:Math.random()*3000,displayAlpha:0})));
+        s.grid.length = newRows;
+        s.grid.forEach(row=>{
+          while(row.length<newCols) row.push({char:s.chars[Math.floor(Math.random()*s.chars.length)],alpha:0,base:0.04+Math.random()*0.25,speed:0.006+Math.random()*0.014,changeAt:Math.random()*3000,displayAlpha:0});
+          row.length = newCols;
+        });
+        s.sz = newSz; s.cols = newCols; s.rows = newRows;
+      }
       this.stepPhysics(s,dt,t);
       const {sz,grid,w,h}=s;
-      ctx.clearRect(0,0,w,h);
-      ctx.fillStyle=state.animColor||'#ffffff';
+      ctx.fillStyle=state.bgColor||'#000000';
+      ctx.fillRect(0,0,w,h);
+      ctx.fillStyle=state.fgColor||'#ffffff';
       ctx.textBaseline='top';
       ctx.font=`${sz-2}px ${state.fontFamily||"'Courier New',monospace"}`;
       for(let r=0;r<grid.length;r++) for(let c=0;c<grid[r].length;c++){
@@ -1976,7 +1998,7 @@ const ANIMATIONS = {
     },
     toSVGString(s){
       const {sz,grid,w,h}=s;
-      const color=state.animColor||'#ffffff';
+      const color=state.fgColor||state.animColor||'#ffffff';
       const ff=state.fontFamily||"'Courier New',monospace";
       let out='';
       for(let r=0;r<grid.length;r++) for(let c=0;c<grid[r].length;c++){
@@ -2004,10 +2026,14 @@ const ANIMATIONS = {
     },
     stepPhysics(s,dt){s.t+=dt*0.00055;},
     drawFrame(ctx,s,dt){
+      // Dynamic cell size from font size slider
+      const newSz = Math.max(8, Math.round(state.fontSize * 1.6));
+      if (newSz !== s.sz) { s.sz = newSz; s.cols = Math.ceil(s.w/newSz); s.rows = Math.ceil(s.h/newSz); }
       this.stepPhysics(s,dt);
       const {sz,chars,cols,rows,w,h,t:T}=s;
-      ctx.clearRect(0,0,w,h);
-      ctx.fillStyle=state.animColor||'#ffffff';
+      ctx.fillStyle=state.bgColor||'#000000';
+      ctx.fillRect(0,0,w,h);
+      ctx.fillStyle=state.fgColor||'#ffffff';
       ctx.textBaseline='top';
       ctx.font=`${sz}px ${state.fontFamily||"'Courier New',monospace"}`;
       for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
@@ -2027,7 +2053,7 @@ const ANIMATIONS = {
     },
     toSVGString(s){
       const {sz,chars,cols,rows,w,h,t:T}=s;
-      const color=state.animColor||'#ffffff';
+      const color=state.fgColor||state.animColor||'#ffffff';
       const ff=state.fontFamily||"'Courier New',monospace";
       let out='';
       for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
@@ -2218,9 +2244,11 @@ document.querySelectorAll('.lib-anim-thumb').forEach(thumb=>{
   });
 });
 
-// Animation color picker
+// Animation color picker — syncs with the Color section's fgColor
 document.getElementById('animColorPicker').addEventListener('input',e=>{
   state.animColor=e.target.value;
+  state.fgColor=e.target.value;
+  const fg=document.getElementById('fgColor'); if(fg) fg.value=e.target.value;
 });
 
 // Export Lottie JSON
