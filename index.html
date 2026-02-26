@@ -1519,8 +1519,11 @@ function doRender() {
 let panX = 0, panY = 0, isPanning = false, panStartX = 0, panStartY = 0;
 
 function applyZoom() {
-  svgWrapper.style.transform = `translate(${panX}px,${panY}px) scale(${state.zoom})`;
+  const xform = `translate(${panX}px,${panY}px) scale(${state.zoom})`;
+  svgWrapper.style.transform = xform;
   svgWrapper.style.transformOrigin = 'center center';
+  animCanvas.style.transform = xform;
+  animCanvas.style.transformOrigin = 'center center';
   const pct = Math.round(state.zoom*100);
   document.getElementById('zoomVal').textContent = pct+'%';
   const slider = document.getElementById('scaleSlider');
