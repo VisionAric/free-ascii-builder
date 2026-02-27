@@ -370,6 +370,34 @@ body.threed-mode #threeDExportGroup{display:flex}
   color:var(--t2);font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;
   transition:all .15s;text-align:center}
 .send-btn:hover{border-color:rgba(255,255,255,.25);color:var(--text);background:var(--s4)}
+
+/* ── Pixel Art Mode ─────────────────────────────────── */
+body.pixel-mode #asciiPresets{display:none}
+body.pixel-mode .ascii-sidebar{display:none}
+body.pixel-mode #asciiExportGroup{display:none}
+body.pixel-mode #svgWrapper{display:none}
+body.pixel-mode .zoom-bar{display:none}
+body.pixel-mode .dither-sidebar{display:none}
+body.pixel-mode #ditherExportGroup{display:none}
+body.pixel-mode #ditherCanvas{display:none!important}
+body.pixel-mode .threed-sidebar{display:none}
+body.pixel-mode #threeDExportGroup{display:none}
+body.pixel-mode #threeDCanvas{display:none!important}
+body.pixel-mode #animCanvas{display:none!important}
+.pixel-sidebar{display:none;flex-direction:column;height:100%;overflow-y:auto}
+body.pixel-mode .pixel-sidebar{display:flex}
+#pixelExportGroup{display:none}
+body.pixel-mode #pixelExportGroup{display:flex}
+#pixelCanvas{position:absolute;inset:0;display:none;pointer-events:none;image-rendering:pixelated;z-index:5}
+#pixelCanvas.active{display:block}
+.bit-pills{display:flex;gap:4px}
+.bit-pill{flex:1;padding:6px 4px;border-radius:5px;border:1px solid var(--border);background:transparent;font-size:10px;font-weight:700;cursor:pointer;text-align:center;color:var(--t3);transition:all .12s;font-family:inherit;letter-spacing:.04em}
+.bit-pill:hover{color:var(--t2);border-color:rgba(255,255,255,.15)}
+.bit-pill.active{border-color:rgba(255,255,255,.35);color:var(--text);background:rgba(255,255,255,.04)}
+.palette-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.palette-pill{padding:7px 6px;border-radius:5px;border:1px solid var(--border);background:transparent;font-size:9px;font-weight:600;cursor:pointer;text-align:center;color:var(--t3);transition:all .12s;font-family:inherit;letter-spacing:.02em}
+.palette-pill:hover{color:var(--t2);border-color:rgba(255,255,255,.15)}
+.palette-pill.active{border-color:rgba(255,255,255,.35);color:var(--text);background:rgba(255,255,255,.04)}
 </style>
 </head>
 <body>
@@ -386,6 +414,7 @@ body.threed-mode #threeDExportGroup{display:flex}
     <button class="mode-btn active" id="modeAscii">ASCII</button>
     <button class="mode-btn" id="modeDither">Dither</button>
     <button class="mode-btn" id="mode3D">3D</button>
+    <button class="mode-btn" id="modePixel">Pixel</button>
   </div>
 
   <div class="tb-center" id="asciiPresets">
@@ -413,6 +442,9 @@ body.threed-mode #threeDExportGroup{display:flex}
       <button class="exp-btn" id="threeDExportPng">PNG</button>
       <button class="exp-btn" id="threeDToAscii">→ ASCII</button>
       <button class="exp-btn" id="threeDToDither">→ Dither</button>
+    </div>
+    <div class="export-group" id="pixelExportGroup">
+      <button class="exp-btn" id="pixelExportPng">PNG</button>
     </div>
     <button class="upload-btn" id="uploadBtn">↑ Upload</button>
     <input type="file" id="fileInput" accept="image/*"/>
@@ -926,6 +958,60 @@ body.threed-mode #threeDExportGroup{display:flex}
   </div>
 </div><!-- /.threed-sidebar -->
 
+<!-- ── PIXEL ART SIDEBAR ───────────────────────────────── -->
+<div class="pixel-sidebar">
+
+  <!-- Bit Depth -->
+  <div class="section" style="border-top:1px solid var(--border)">
+    <div class="section-hdr open" data-section="pixel-depth">
+      Bit Depth <span class="arrow">▾</span>
+    </div>
+    <div class="section-body" id="body-pixel-depth">
+      <div class="bit-pills">
+        <button class="bit-pill active" data-bits="8">8-bit</button>
+        <button class="bit-pill" data-bits="16">16-bit</button>
+      </div>
+      <div id="pixelPaletteRow" style="display:flex;flex-direction:column;gap:8px">
+        <div class="ctrl-label">Palette</div>
+        <div class="palette-grid">
+          <button class="palette-pill active" data-palette="gameboy">Game Boy</button>
+          <button class="palette-pill" data-palette="cga">CGA</button>
+          <button class="palette-pill" data-palette="pico8">Pico-8</button>
+          <button class="palette-pill" data-palette="nes">NES</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="section">
+    <div class="section-hdr open" data-section="pixel-ctrl">
+      Controls <span class="arrow">▾</span>
+    </div>
+    <div class="section-body" id="body-pixel-ctrl">
+      <div class="ctrl">
+        <div class="ctrl-row">
+          <div class="ctrl-label">Pixel size</div>
+          <div class="ctrl-val" id="pixelSizeVal">8px</div>
+        </div>
+        <input type="range" id="pixelSize" min="2" max="64" value="8" step="1"/>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-row">
+          <div class="ctrl-label">Scale</div>
+          <div class="ctrl-val" id="pixelScaleVal">100%</div>
+        </div>
+        <input type="range" id="pixelScale" min="10" max="400" value="100"/>
+      </div>
+      <div class="toggle-row">
+        <div class="ctrl-label">Show grid</div>
+        <button class="toggle" id="pixelGrid"></button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /.pixel-sidebar -->
+
 </aside>
 
 <!-- ── PREVIEW ───────────────────────────────────────────────── -->
@@ -955,6 +1041,7 @@ body.threed-mode #threeDExportGroup{display:flex}
       <canvas id="animCanvas"></canvas>
       <canvas id="ditherCanvas"></canvas>
       <canvas id="threeDCanvas"></canvas>
+      <canvas id="pixelCanvas"></canvas>
       <div id="svgWrapper">
         <svg id="asciiSvg" xmlns="http://www.w3.org/2000/svg"></svg>
       </div>
@@ -1092,6 +1179,8 @@ function loadImageUrl(url, name='image') {
     showOutput();
     if (appMode === 'dither') {
       scheduleDither();
+    } else if (appMode === 'pixel') {
+      schedulePixel();
     } else {
       scheduleRender();
     }
@@ -1524,6 +1613,12 @@ function applyZoom() {
   svgWrapper.style.transformOrigin = 'center center';
   animCanvas.style.transform = xform;
   animCanvas.style.transformOrigin = 'center center';
+  pixelCanvas.style.transform = xform;
+  pixelCanvas.style.transformOrigin = 'center center';
+  document.getElementById('pixelScaleVal').textContent = Math.round(state.zoom*100)+'%';
+  const psl = document.getElementById('pixelScale');
+  psl.value = Math.min(400,Math.max(10,Math.round(state.zoom*100)));
+  updateSliderFill(psl);
   const pct = Math.round(state.zoom*100);
   document.getElementById('zoomVal').textContent = pct+'%';
   const slider = document.getElementById('scaleSlider');
@@ -2286,19 +2381,22 @@ function switchMode(mode) {
   appMode = mode;
   document.body.classList.toggle('dither-mode', mode === 'dither');
   document.body.classList.toggle('threed-mode', mode === '3d');
+  document.body.classList.toggle('pixel-mode', mode === 'pixel');
   document.getElementById('modeAscii').classList.toggle('active', mode === 'ascii');
   document.getElementById('modeDither').classList.toggle('active', mode === 'dither');
   document.getElementById('mode3D').classList.toggle('active', mode === '3d');
+  document.getElementById('modePixel').classList.toggle('active', mode === 'pixel');
 
   const dc = document.getElementById('ditherCanvas');
   const tc = document.getElementById('threeDCanvas');
+  const pc = document.getElementById('pixelCanvas');
 
   if (mode === '3d') {
     if (animRaf) stopAnimation();
     dc.classList.remove('active');
+    pc.classList.remove('active');
     tc.classList.add('active');
-    showOutput(); // show container without needing an image
-    // Double-RAF: wait for browser to reflow before measuring container size
+    showOutput();
     requestAnimationFrame(() => requestAnimationFrame(() => {
       if (!threeRenderer) { initThreeJS(); loadThreeShape(activeShapeId); }
       else resizeThreeJS();
@@ -2307,13 +2405,22 @@ function switchMode(mode) {
   } else if (mode === 'dither') {
     stopThreeLoop();
     tc.classList.remove('active');
+    pc.classList.remove('active');
     if (animRaf) stopAnimation();
     if (state.imageLoaded) { showOutput(); scheduleDither(); }
+  } else if (mode === 'pixel') {
+    stopThreeLoop();
+    tc.classList.remove('active');
+    dc.classList.remove('active');
+    if (animRaf) stopAnimation();
+    pc.classList.add('active');
+    if (state.imageLoaded) { showOutput(); schedulePixel(); }
   } else {
     // ASCII
     stopThreeLoop();
     tc.classList.remove('active');
     dc.classList.remove('active');
+    pc.classList.remove('active');
     dc.style.display = 'none';
     setTimeout(() => { dc.style.display = ''; }, 0);
     if (state.imageLoaded) { showOutput(); scheduleRender(); }
@@ -2323,6 +2430,7 @@ function switchMode(mode) {
 document.getElementById('modeAscii').addEventListener('click', () => switchMode('ascii'));
 document.getElementById('modeDither').addEventListener('click', () => switchMode('dither'));
 document.getElementById('mode3D').addEventListener('click', () => switchMode('3d'));
+document.getElementById('modePixel').addEventListener('click', () => switchMode('pixel'));
 
 // Cloud upload button in dither library panel
 document.getElementById('ditherUploadBtn').addEventListener('click', () => document.getElementById('fileInput').click());
@@ -2653,10 +2761,11 @@ document.getElementById('dbg').addEventListener('input', e => {
   scheduleDither();
 });
 
-// Resize: re-render dither/3D when window resizes
+// Resize: re-render dither/3D/pixel when window resizes
 window.addEventListener('resize', () => {
   if (appMode==='dither') scheduleDither();
   else if (appMode==='3d') resizeThreeJS();
+  else if (appMode==='pixel') schedulePixel();
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -2888,6 +2997,187 @@ function sendThreeTo(targetMode) {
   };
   img.src = dataUrl;
 }
+
+// ═══════════════════════════════════════════════════════════════
+//  PIXEL ART MODE
+// ═══════════════════════════════════════════════════════════════
+const pixelCanvas = document.getElementById('pixelCanvas');
+
+const PIXEL_PALETTES = {
+  // Game Boy — 4-color green palette (dark → light)
+  gameboy: [[15,56,15],[48,98,48],[139,172,15],[155,188,15]],
+  // CGA — 16-color palette
+  cga: [
+    [0,0,0],[0,0,170],[0,170,0],[0,170,170],
+    [170,0,0],[170,0,170],[170,85,0],[170,170,170],
+    [85,85,85],[85,85,255],[85,255,85],[85,255,255],
+    [255,85,85],[255,85,255],[255,255,85],[255,255,255]
+  ],
+  // Pico-8 — 16-color indie game palette
+  pico8: [
+    [0,0,0],[29,43,83],[126,37,83],[0,135,81],
+    [171,82,54],[95,87,79],[194,195,199],[255,241,232],
+    [255,0,77],[255,163,0],[255,236,39],[0,228,54],
+    [41,173,255],[131,118,156],[255,119,168],[255,204,170]
+  ],
+  // NES — 16 representative colors from the NES palette
+  nes: [
+    [0,0,0],[252,252,252],[124,124,124],[188,188,188],
+    [248,56,0],[228,92,16],[252,116,96],[252,160,68],
+    [252,252,0],[252,252,152],[0,184,0],[184,248,24],
+    [0,0,252],[60,188,252],[0,120,248],[152,120,248]
+  ]
+};
+
+function nearestPaletteColor(r, g, b, palette) {
+  let best = palette[0], bestDist = Infinity;
+  for (const col of palette) {
+    const d = (r-col[0])**2 + (g-col[1])**2 + (b-col[2])**2;
+    if (d < bestDist) { bestDist = d; best = col; }
+  }
+  return best;
+}
+
+function quantize16bit(r, g, b) {
+  // R5G6B5 quantization — true 16-bit color (65536 colors)
+  const r5 = r >> 3, g6 = g >> 2, b5 = b >> 3;
+  return [(r5 << 3) | (r5 >> 2), (g6 << 2) | (g6 >> 4), (b5 << 3) | (b5 >> 2)];
+}
+
+const pixelState = {
+  bits: 8,
+  palette: 'gameboy',
+  pixelSize: 8,
+  grid: false,
+};
+
+let pixelDebounce = null;
+function schedulePixel() {
+  clearTimeout(pixelDebounce);
+  pixelDebounce = setTimeout(renderPixel, 30);
+}
+
+function renderPixel() {
+  if (!state.imageLoaded) return;
+  const W = svgContainer.clientWidth, H = svgContainer.clientHeight;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  pixelCanvas.width = W * dpr; pixelCanvas.height = H * dpr;
+  pixelCanvas.style.width = W + 'px'; pixelCanvas.style.height = H + 'px';
+  const pctx = pixelCanvas.getContext('2d');
+  pctx.scale(dpr, dpr);
+
+  const img = state.imageEl;
+  const sz = pixelState.pixelSize;
+
+  // Fit image in container maintaining aspect ratio
+  const imgAspect = img.naturalWidth / img.naturalHeight;
+  const containerAspect = W / H;
+  let drawW, drawH;
+  if (imgAspect > containerAspect) { drawW = W; drawH = W / imgAspect; }
+  else { drawH = H; drawW = H * imgAspect; }
+  const offX = Math.round((W - drawW) / 2);
+  const offY = Math.round((H - drawH) / 2);
+
+  const cols = Math.ceil(drawW / sz);
+  const rows = Math.ceil(drawH / sz);
+
+  // Downsample image to block resolution
+  const offCvs = document.createElement('canvas');
+  offCvs.width = cols; offCvs.height = rows;
+  const offCtx = offCvs.getContext('2d', { willReadFrequently: true });
+  offCtx.drawImage(img, 0, 0, cols, rows);
+  const imgData = offCtx.getImageData(0, 0, cols, rows).data;
+
+  // Background
+  pctx.fillStyle = '#000000';
+  pctx.fillRect(0, 0, W, H);
+
+  const palette = pixelState.bits === 8 ? PIXEL_PALETTES[pixelState.palette] : null;
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const idx = (r * cols + c) * 4;
+      let pr = imgData[idx], pg = imgData[idx+1], pb = imgData[idx+2];
+      if (palette) {
+        const col = nearestPaletteColor(pr, pg, pb, palette);
+        pr = col[0]; pg = col[1]; pb = col[2];
+      } else {
+        [pr, pg, pb] = quantize16bit(pr, pg, pb);
+      }
+      pctx.fillStyle = `rgb(${pr},${pg},${pb})`;
+      pctx.fillRect(offX + c * sz, offY + r * sz, sz, sz);
+    }
+  }
+
+  // Optional pixel grid overlay
+  if (pixelState.grid) {
+    pctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    pctx.lineWidth = 0.5;
+    for (let r = 0; r <= rows; r++) {
+      pctx.beginPath();
+      pctx.moveTo(offX, offY + r * sz);
+      pctx.lineTo(offX + cols * sz, offY + r * sz);
+      pctx.stroke();
+    }
+    for (let c = 0; c <= cols; c++) {
+      pctx.beginPath();
+      pctx.moveTo(offX + c * sz, offY);
+      pctx.lineTo(offX + c * sz, offY + rows * sz);
+      pctx.stroke();
+    }
+  }
+}
+
+// Pixel export
+document.getElementById('pixelExportPng').addEventListener('click', () => {
+  const link = document.createElement('a');
+  link.download = 'pixel-art.png';
+  link.href = pixelCanvas.toDataURL('image/png');
+  link.click();
+});
+
+// Bit depth pills
+document.querySelectorAll('.bit-pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    document.querySelectorAll('.bit-pill').forEach(p => p.classList.remove('active'));
+    pill.classList.add('active');
+    pixelState.bits = +pill.dataset.bits;
+    document.getElementById('pixelPaletteRow').style.display = pixelState.bits === 8 ? '' : 'none';
+    schedulePixel();
+  });
+});
+
+// Palette pills
+document.querySelectorAll('.palette-pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    document.querySelectorAll('.palette-pill').forEach(p => p.classList.remove('active'));
+    pill.classList.add('active');
+    pixelState.palette = pill.dataset.palette;
+    schedulePixel();
+  });
+});
+
+// Pixel size slider
+document.getElementById('pixelSize').addEventListener('input', e => {
+  pixelState.pixelSize = +e.target.value;
+  document.getElementById('pixelSizeVal').textContent = e.target.value + 'px';
+  updateSliderFill(e.target);
+  schedulePixel();
+});
+
+// Pixel scale slider (synced with shared state.zoom → applyZoom handles canvas transform)
+document.getElementById('pixelScale').addEventListener('input', e => {
+  state.zoom = +e.target.value / 100;
+  document.getElementById('pixelScaleVal').textContent = e.target.value + '%';
+  updateSliderFill(e.target);
+  applyZoom();
+});
+
+// Grid toggle
+document.getElementById('pixelGrid').addEventListener('click', () => {
+  pixelState.grid = toggleEl('pixelGrid');
+  schedulePixel();
+});
 
 // ═══════════════════════════════════════════════════════════════
 //  INIT
